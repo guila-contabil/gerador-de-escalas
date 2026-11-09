@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Monte a escala de trabalho 5x2 da empresa, confira folgas, domingos e feriados e baixe em PDF ou Excel.">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Gerador de Escalas 5×2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&display=swap">
+</head>
+<body>
+<style>
+/* Layout: coluna única de assistente (4 etapas) que se abre numa grade larga no resultado. Tinta verde-pinho sobre papel frio. */
+:root{
+  --bg:#F3F6F5; --surface:#FFFFFF; --surface-2:#EAF0EE; --ink:#14302A; --muted:#566B65; --line:#D3DEDA;
+  --accent:#0E6656; --accent-ink:#FFFFFF; --accent-soft:#DCEFEA;
+  --ok:#1D7745; --ok-soft:#DDF2E5; --warn:#9A5B00; --warn-soft:#FBEED3; --bad:#B0281F; --bad-soft:#FBE3E0; --info:#2F5C8A; --info-soft:#E2ECF7;
+  --c-t:#DCF0E3; --c-t-ink:#145C35; --c-f:#E8ECEE; --c-f-ink:#55646B; --c-fer:#FBE7BE; --c-fer-ink:#7A4B00; --c-fe:#E7DAF6; --c-fe-ink:#5A2F8C;
+  --c-fg:#E3EBF5; --c-fg-ink:#3B5878; --c-fc:#D4EEF0; --c-fc-ink:#155E66;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1A18; --surface:#16231F; --surface-2:#1C2D29; --ink:#E4EEEA; --muted:#9DB2AC; --line:#2C3F3A;
+  --accent:#3FB59C; --accent-ink:#06201A; --accent-soft:#183A33;
+  --ok:#5CCB8A; --ok-soft:#173526; --warn:#E6B054; --warn-soft:#3A2D12; --bad:#F08A80; --bad-soft:#3F1D1A; --info:#8DB8E6; --info-soft:#1B2D41;
+  --c-t:#1B3C2A; --c-t-ink:#9EE0B6; --c-f:#232F33; --c-f-ink:#A8B6BC; --c-fer:#43341A; --c-fer-ink:#F2C979; --c-fe:#33264A; --c-fe-ink:#D1B6F2;
+  --c-fg:#1F2C3B; --c-fg-ink:#A9C2DF; --c-fc:#15363A; --c-fc-ink:#8ED9E0;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1A18; --surface:#16231F; --surface-2:#1C2D29; --ink:#E4EEEA; --muted:#9DB2AC; --line:#2C3F3A;
+  --accent:#3FB59C; --accent-ink:#06201A; --accent-soft:#183A33;
+  --ok:#5CCB8A; --ok-soft:#173526; --warn:#E6B054; --warn-soft:#3A2D12; --bad:#F08A80; --bad-soft:#3F1D1A; --info:#8DB8E6; --info-soft:#1B2D41;
+  --c-t:#1B3C2A; --c-t-ink:#9EE0B6; --c-f:#232F33; --c-f-ink:#A8B6BC; --c-fer:#43341A; --c-fer-ink:#F2C979; --c-fe:#33264A; --c-fe-ink:#D1B6F2;
+  --c-fg:#1F2C3B; --c-fg-ink:#A9C2DF; --c-fc:#15363A; --c-fc-ink:#8ED9E0;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:24px 64px}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.wrap.wide{max-width:1280px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(1.7rem,4vw,2.3rem);line-height:1.1}
+h2{font-size:1.4rem;line-height:1.2}
+h3{font-size:1.05rem}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:.875rem}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:14px}
+header.top .eyebrow{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700}
+header.top p{max-width:60ch}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;list-style:none;padding:0;margin:0}
+.steps button{width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:var(--r);font:inherit;font-size:.95rem;cursor:pointer;text-align:left}
+.steps button .n{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);font-weight:700;font-size:.8rem;font-variant-numeric:tabular-nums}
+.steps button[aria-current="step"]{border-color:var(--accent);color:var(--ink);font-weight:600;box-shadow:inset 0 -3px 0 var(--accent)}
+.steps button[aria-current="step"] .n{background:var(--accent);color:var(--accent-ink)}
+.steps button.done .n{background:var(--accent-soft);color:var(--accent)}
+@media (max-width:560px){.steps button .t{display:none}.steps button{justify-content:center}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:clamp(16px,3vw,28px);display:flex;flex-direction:column;gap:18px}
+.panel > .head{display:flex;flex-direction:column;gap:4px}
+label.f{display:flex;flex-direction:column;gap:5px;font-weight:600;font-size:.9rem;min-width:0}
+label.f .hint{font-weight:400;color:var(--muted);font-size:.82rem}
+input[type=text],input[type=time],input[type=month],input[type=date],input[type=number],select{font:inherit;font-size:1rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible,td.cell:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:640px){.g2,.g3,.g4{grid-template-columns:minmax(0,1fr)}}
+.btn{font:inherit;font-weight:600;border-radius:8px;padding:10px 16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.link{border:none;background:none;padding:4px 0;color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.row.end{justify-content:flex-end}
+.row.between{justify-content:space-between}
+.note{border-radius:8px;padding:12px 14px;font-size:.92rem;background:var(--info-soft);color:var(--ink);border-left:4px solid var(--info)}
+.note.warn{background:var(--warn-soft);border-left-color:var(--warn)}
+.note.ok{background:var(--ok-soft);border-left-color:var(--ok)}
+.note b{font-weight:700}
+.badge{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:var(--surface-2);color:var(--muted)}
+.badge.ex{background:var(--warn-soft);color:var(--warn)}
+.person{border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.person > summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:12px;justify-content:space-between}
+.person > summary::-webkit-details-marker{display:none}
+.person > summary .who{display:flex;flex-direction:column;min-width:0}
+.person > summary .who b{font-size:1.02rem}
+.person > summary .who span{color:var(--muted);font-size:.86rem}
+.person > summary .chev{color:var(--accent);font-size:.86rem;font-weight:600;white-space:nowrap}
+.person[open] > summary{border-bottom:1px solid var(--line)}
+.person .body{padding:14px;display:flex;flex-direction:column;gap:14px}
+.list{display:flex;flex-direction:column;gap:10px}
+.daylist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.day{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-top:1px solid var(--line)}
+.day:first-child{border-top:none}
+.day.closed{background:var(--surface-2);color:var(--muted)}
+.day label.chk{display:flex;align-items:center;gap:10px;font-weight:600}
+.day .min{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--muted)}
+.day .min input{width:76px}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.hol{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r)}
+.hol .what{display:flex;flex-direction:column;min-width:0}
+details.more > summary{cursor:pointer;color:var(--accent);font-weight:600}
+details.more[open] > summary{margin-bottom:12px}
+.summary-box{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.summary-box{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column}
+.stat b{font-family:var(--f-display);font-size:1.5rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:.82rem;color:var(--muted)}
+.stat.bad b{color:var(--bad)} .stat.warn b{color:var(--warn)} .stat.ok b{color:var(--ok)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table.esc{border-collapse:separate;border-spacing:0;font-size:.82rem;font-variant-numeric:tabular-nums;width:max-content;min-width:100%}
+table.esc th,table.esc td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;text-align:center}
+table.esc thead th{background:var(--surface-2);font-weight:600;padding:6px 4px;position:sticky;top:0;z-index:1;min-width:46px}
+table.esc thead th .wd{display:block;font-weight:400;color:var(--muted);font-size:.72rem}
+table.esc thead th.sun{color:var(--accent)}
+table.esc th.name,table.esc td.name{position:sticky;left:0;z-index:2;background:var(--surface);text-align:left;padding:6px 10px;min-width:150px;max-width:190px}
+table.esc thead th.name{z-index:3;background:var(--surface-2)}
+table.esc td.name b{display:block;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table.esc td.name span{color:var(--muted);font-size:.74rem;white-space:nowrap}
+table.esc .wk{border-left:2px solid var(--ink)}
+td.cell{cursor:pointer;height:40px;font-weight:700;user-select:none}
+td.cell.locked{cursor:default}
+td.cell small{display:block;font-weight:400;font-size:.62rem;opacity:.85}
+.c-T{background:var(--c-t);color:var(--c-t-ink)}
+.c-F{background:var(--c-f);color:var(--c-f-ink)}
+.c-FER{background:var(--c-fer);color:var(--c-fer-ink)}
+.c-FE{background:var(--c-fe);color:var(--c-fe-ink)}
+.c-RSR{background:var(--c-f);color:var(--c-f-ink)}
+.c-FG{background:var(--c-fg);color:var(--c-fg-ink)}
+.c-FC{background:var(--c-fc);color:var(--c-fc-ink)}
+.note.bad{background:var(--bad-soft);border-left-color:var(--bad)}
+.note ul{margin:6px 0 0;padding-left:20px}
+td.cell.edited{box-shadow:inset 0 0 0 2px var(--accent)}
+tr.tot td{font-weight:700;padding:6px 4px;background:var(--surface-2)}
+tr.tot td.name{background:var(--surface-2)}
+tr.tot td.short{background:var(--bad-soft);color:var(--bad)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.85rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-grid;place-items:center;min-width:34px;height:22px;border-radius:5px;font-style:normal;font-weight:700;font-size:.72rem}
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface)}
+.alert .lvl{font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px;align-self:start;white-space:nowrap}
+.alert.irregular .lvl{background:var(--bad-soft);color:var(--bad)}
+.alert.atencao .lvl{background:var(--warn-soft);color:var(--warn)}
+.alert.info .lvl{background:var(--info-soft);color:var(--info)}
+.alert .base{grid-column:2;font-size:.8rem;color:var(--muted)}
+table.res{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+table.res th,table.res td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.res th:first-child,table.res td:first-child{text-align:left}
+table.res th{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom, 0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+@media (prefers-reduced-motion:no-preference){.btn,.steps button{transition:border-color .15s, filter .15s}}
+</style>
+
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="motor.js" charset="utf-8"></script>
+<script>
+"use strict";
+const M = window.Motor;
+const { DOW, ud, iso, br, ddmm, fromIso, fmtH } = M;
+const DOW_LONG = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const NOME_COD = {T:'Trabalho', FE:'Trabalho em feriado', RSR:'Repouso semanal', FER:'Feriado sem trabalho', FG:'Folga da escala', FC:'Folga compensatória'};
+
+/* ================= estado ================= */
+let uid = 1;
+const pessoa = (o={}) => ({id:uid++, nome:'', cargo:'', sexo:'F', entrada:'08:00', saida:'17:00', intIni:'12:00', intFim:'13:00', grupo:'', folgaFixa:'', ...o});
+function exemplo(){
+  return [
+    pessoa({nome:'Bruna Teixeira', cargo:'Atendente', sexo:'F', entrada:'08:00', saida:'14:15', intIni:'11:00', intFim:'11:15', grupo:'Atendimento'}),
+    pessoa({nome:'Caio Martins', cargo:'Atendente', sexo:'M', entrada:'08:00', saida:'14:15', intIni:'11:15', intFim:'11:30', grupo:'Atendimento'}),
+    pessoa({nome:'Denise Rocha', cargo:'Atendente', sexo:'F', entrada:'14:00', saida:'20:15', intIni:'17:00', intFim:'17:15', grupo:'Atendimento'}),
+    pessoa({nome:'Elias Prado', cargo:'Caixa', sexo:'M', entrada:'09:00', saida:'15:15', intIni:'12:00', intFim:'12:15', grupo:'Caixa'}),
+    pessoa({nome:'Fátima Lopes', cargo:'Caixa', sexo:'F', entrada:'13:00', saida:'19:15', intIni:'16:00', intFim:'16:15', grupo:'Caixa'}),
+  ];
+}
+const hoje = new Date();
+const proxMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 1);
+const state = {
+  etapa:1, ano:proxMes.getFullYear(), mes:proxMes.getMonth(), tipo:'5x2',
+  equipe: exemplo(), exemplo:true,
+  dias: DOW.map((_,i)=>({aberto:true, min: i===6 ? 2 : 3})),
+  grupoMin:{}, domModelo:'comercio', domN:3,
+  feriados:[], historico:null, resultado:null, seed:1
+};
+state.feriados = M.feriadosDoMes(state.ano, state.mes);
+
+const cfgAtual = () => ({ano:state.ano, mes:state.mes, tipo:state.tipo, equipe:state.equipe, dias:state.dias, grupoMin:state.grupoMin,
+  domModelo:state.domModelo, domN:state.domN, feriados:state.feriados, historico:state.historico, seed:state.seed});
+
+/* ================= apresentação ================= */
+const app=document.getElementById('app');
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true, 3800); }
+const nomeMes = () => `${MESES[state.mes]} de ${state.ano}`;
+const ymVal = () => `${state.ano}-${String(state.mes+1).padStart(2,'0')}`;
+const pode6x1 = () => (state.ano*12+state.mes) <= (2026*12+11);
+
+function cabecalho(){
+  return `<header class="top">
+    <div><div class="eyebrow">Escala de trabalho · ${state.tipo==='5x2'?'5×2':'6×1'}</div>
+    <h1>Monte a escala do mês</h1>
+    <p class="muted">Informe como a empresa funciona. O gerador distribui as folgas, confere as regras e prepara o PDF e o Excel.</p></div>
+  </header>`;
+}
+function stepper(){
+  const t=['Escala','Equipe','Dias abertos','Feriados'];
+  return `<nav aria-label="Etapas"><ol class="steps">${t.map((x,i)=>{
+    const n=i+1, cur=state.etapa===n;
+    return `<li><button type="button" data-goto="${n}" ${cur?'aria-current="step"':''} class="${state.etapa>n?'done':''}"><span class="n">${n}</span><span class="t">${x}</span></button></li>`;}).join('')}</ol></nav>`;
+}
+function nav(prev, nextLabel, nextAct){
+  return `<div class="row between">${prev?`<button type="button" class="btn" data-goto="${prev}">← Voltar</button>`:'<span></span>'}
+    <button type="button" class="btn primary" data-act="${nextAct}">${nextLabel}</button></div>`;
+}
+
+function etapa1(){
+  if(!pode6x1() && state.tipo==='6x1') state.tipo='5x2';
+  const dez26 = state.ano===2026 && state.mes===11;
+  const txt = state.tipo==='5x2'
+    ? 'Cada pessoa terá duas folgas por semana. A semana vai de segunda a domingo.'
+    : dez26 ? 'Uma folga por semana até 13/12. A partir da semana de 14/12, cada pessoa passa a ter duas folgas, porque a nova regra da Constituição vale desde 16/12/2026.'
+            : 'Uma folga por semana (regra anterior à EC 141/2026). A semana vai de segunda a domingo.';
+  const cont = state.historico ? `<div class="note ok"><b>Continuação do mês anterior.</b> Os últimos dias de ${esc(state.historico.rotulo)} ficam como estavam, e as regras de domingo e de dias seguidos levam esses dias em conta. <button type="button" class="btn link" data-act="semhist">Começar sem o mês anterior</button></div>` : '';
+  return `<section class="panel">
+    <div class="head"><h2>Qual escala você quer montar?</h2><p class="muted">Escolha o mês e o tipo de escala.</p></div>
+    ${cont}
+    <div class="grid g2">
+      <label class="f" for="f-mes">Mês da escala<input type="month" id="f-mes" value="${ymVal()}"></label>
+      <label class="f" for="f-tipo">Tipo de escala
+        <select id="f-tipo">
+          <option value="5x2" ${state.tipo==='5x2'?'selected':''}>5×2 · duas folgas por semana</option>
+          ${pode6x1()?`<option value="6x1" ${state.tipo==='6x1'?'selected':''}>6×1 · uma folga por semana (até dez/2026)</option>`:''}
+        </select></label>
+    </div>
+    <div class="note">${txt}</div>
+    <p class="small muted">A EC 141/2026, publicada em 16/10/2026, garante duas folgas por semana a partir de 16/12/2026 e limita a jornada a 42 h semanais a partir dessa data e a 40 h a partir de 16/12/2027. Confira também a convenção coletiva da categoria. <a href="https://www.planalto.gov.br/ccivil_03/constituicao/emendas/emc/emc141.htm" target="_blank" rel="noopener">Ler a emenda</a></p>
+  </section>${nav(0,'Continuar →','next')}`;
+}
+
+function resumoJornada(p){
+  const j=M.jornada(p); if(!j) return 'Informe entrada e saída.';
+  return `Jornada de ${fmtH(j.eff)} por dia${j.itv?` (intervalo de ${j.itv} min)`:', sem intervalo informado'}${j.cruza?' · termina no dia seguinte':''}${j.not?` · ${fmtH(j.not)} noturnas (${fmtH(j.notReduzida)} em hora reduzida)`:''}.`;
+}
+function resumoPessoa(p){
+  return [p.cargo, p.sexo==='F'?'Feminino':'Masculino', p.entrada&&p.saida?`${p.entrada}–${p.saida}`:'', p.folgaFixa!==''?`folga fixa: ${DOW_LONG[p.folgaFixa]}`:''].filter(Boolean).join(' · ');
+}
+function cardPessoa(p,i){
+  return `<details class="person" data-i="${i}">
+    <summary><span class="who"><b data-sum="nome">${esc(p.nome)||'Sem nome'}</b><span data-sum="res">${esc(resumoPessoa(p))}</span></span><span class="chev">Editar</span></summary>
+    <div class="body">
+      <div class="grid g3">
+        <label class="f">Nome<input type="text" data-f="nome" value="${esc(p.nome)}" id="p${p.id}-nome"></label>
+        <label class="f">Cargo<input type="text" data-f="cargo" value="${esc(p.cargo)}" id="p${p.id}-cargo"></label>
+        <label class="f">Sexo<select data-f="sexo" id="p${p.id}-sexo"><option value="F" ${p.sexo==='F'?'selected':''}>Feminino</option><option value="M" ${p.sexo==='M'?'selected':''}>Masculino</option></select></label>
+      </div>
+      <div class="grid g4">
+        <label class="f">Entrada<input type="time" data-f="entrada" value="${p.entrada}" id="p${p.id}-ent"></label>
+        <label class="f">Saída<input type="time" data-f="saida" value="${p.saida}" id="p${p.id}-sai"></label>
+        <label class="f">Intervalo: início<input type="time" data-f="intIni" value="${p.intIni}" id="p${p.id}-ii"></label>
+        <label class="f">Intervalo: fim<input type="time" data-f="intFim" value="${p.intFim}" id="p${p.id}-if"></label>
+      </div>
+      <p class="small muted" data-sum="jor">${resumoJornada(p)}</p>
+      <div class="grid g2">
+        <label class="f">Grupo de turno ou cargo <span class="hint">Use o mesmo nome para quem pode substituir um ao outro.</span>
+          <input type="text" list="dl-grupos" data-f="grupo" value="${esc(p.grupo)}" id="p${p.id}-grupo" placeholder="Ex.: Atendimento da manhã"></label>
+        <label class="f">Folga que se repete toda semana <span class="hint">Deixe o gerador escolher, se não houver.</span>
+          <select data-f="folgaFixa" id="p${p.id}-ff"><option value="">Deixar o gerador escolher</option>${DOW_LONG.map((d,k)=>`<option value="${k}" ${String(p.folgaFixa)===String(k)?'selected':''}>${d}</option>`).join('')}</select></label>
+      </div>
+      <div class="row">
+        <button type="button" class="btn" data-act="copiar" data-i="${i}">Copiar este horário para a equipe</button>
+        <button type="button" class="btn" data-act="duplicar" data-i="${i}">Duplicar pessoa</button>
+        <button type="button" class="btn danger" data-act="remover" data-i="${i}">Remover</button>
+      </div>
+    </div></details>`;
+}
+function etapa2(){
+  const grupos=[...new Set(state.equipe.map(p=>p.grupo.trim()).filter(Boolean))];
+  return `<section class="panel">
+    <div class="head"><h2>Quem vai trabalhar?</h2><p class="muted">Adicione as pessoas que entram nesta escala.</p></div>
+    ${state.exemplo?`<div class="note warn row between"><span><b>Equipe de exemplo.</b> Substitua pelos seus funcionários ou comece do zero.</span><button type="button" class="btn" data-act="limpar">Limpar exemplo</button></div>`:''}
+    <form id="f-add" class="grid g4" style="align-items:end">
+      <label class="f" style="grid-column:span 2">Nome<input type="text" id="n-nome" placeholder="Ex.: Joana Souza" required></label>
+      <label class="f">Cargo (opcional)<input type="text" id="n-cargo" placeholder="Ex.: Atendente"></label>
+      <label class="f">Sexo<select id="n-sexo"><option value="F">Feminino</option><option value="M">Masculino</option></select></label>
+      <button type="submit" class="btn primary" style="grid-column:1/-1;justify-self:start">Adicionar pessoa</button>
+    </form>
+    <p class="small muted">O sexo é usado só para a regra de domingos das mulheres: uma folga aos domingos a cada 15 dias (CLT, art. 386).</p>
+    <details class="more"><summary>Horário padrão para toda a equipe</summary>
+      <div class="grid g4" style="align-items:end">
+        <label class="f">Entrada<input type="time" id="h-ent" value="08:00"></label>
+        <label class="f">Saída<input type="time" id="h-sai" value="17:00"></label>
+        <label class="f">Intervalo: início<input type="time" id="h-ii" value="12:00"></label>
+        <label class="f">Intervalo: fim<input type="time" id="h-if" value="13:00"></label>
+      </div>
+      <div class="row" style="margin-top:12px"><button type="button" class="btn" data-act="padrao">Aplicar a todos</button></div>
+    </details>
+    <div class="note warn"><b>Atenção ao mudar um horário já praticado.</b> Uma mudança que prejudique o funcionário pode ser anulada na Justiça do Trabalho, mesmo com a concordância dele (CLT, art. 468). Confira o contrato e a convenção coletiva antes.</div>
+    ${state.historico?'<p class="small muted">Na continuação do mês anterior, mantenha os mesmos nomes: é pelo nome que o gerador liga cada pessoa aos dias já trabalhados.</p>':''}
+    <datalist id="dl-grupos">${grupos.map(g=>`<option value="${esc(g)}">`).join('')}</datalist>
+    <div class="list" id="lista">${state.equipe.map(cardPessoa).join('') || '<p class="muted">Nenhuma pessoa adicionada.</p>'}</div>
+  </section>${nav(1,'Continuar →','next')}`;
+}
+
+function etapa3(){
+  const grupos=[...new Set(state.equipe.map(p=>p.grupo.trim()).filter(Boolean))];
+  const domAberto=state.dias[6].aberto;
+  const baseDom = state.domModelo==='comercio' ? 'Lei 10.101/2000, art. 6º, parágrafo único.'
+    : state.domModelo==='atividade' ? 'Portaria MTP 671/2021, art. 56, § 2º (atividades autorizadas a funcionar aos domingos).'
+    : 'Informe a periodicidade prevista na convenção coletiva ou na autorização da sua atividade.';
+  return `<section class="panel">
+    <div class="head"><h2>Em quais dias a empresa abre?</h2><p class="muted">Desmarque os dias em que todos folgam. Nos dias abertos, informe o menor número de pessoas trabalhando. O gerador não monta escala abaixo desse mínimo.</p></div>
+    <label class="note row" style="gap:10px"><input type="checkbox" id="f-fechadom" ${!domAberto?'checked':''}> A empresa fecha aos domingos</label>
+    <div class="daylist">${state.dias.map((d,k)=>`<div class="day ${d.aberto?'':'closed'}">
+      <label class="chk"><input type="checkbox" data-dia="${k}" ${d.aberto?'checked':''} id="d-${k}"> ${DOW_LONG[k]}</label>
+      ${d.aberto?`<span class="min">Pelo menos <input type="number" min="0" max="999" data-min="${k}" value="${d.min}" id="m-${k}" aria-label="Mínimo de pessoas na ${DOW_LONG[k]}"></span>`:'<span class="small">Fechado · todos folgam</span>'}
+    </div>`).join('')}</div>
+    <details class="more" ${Object.values(state.grupoMin).some(v=>Number(v)>0)?'open':''}><summary>Precisa garantir pessoas em cada grupo de turno ou cargo?</summary>
+      ${grupos.length?`<div class="grid g3">${grupos.map((g,k)=>`<label class="f">${esc(g)} <span class="hint">mínimo por dia aberto</span><input type="number" min="0" data-gmin="${esc(g)}" id="g-${k}" value="${Number(state.grupoMin[g])||0}"></label>`).join('')}</div>`
+        :'<p class="muted small">Nenhum grupo cadastrado. Informe o grupo de cada pessoa na etapa Equipe.</p>'}
+    </details>
+    ${domAberto?`<div class="grid g2">
+      <label class="f" for="f-dom">Domingo de folga<select id="f-dom">
+        <option value="comercio" ${state.domModelo==='comercio'?'selected':''}>Comércio: 1 domingo a cada 3 semanas</option>
+        <option value="atividade" ${state.domModelo==='atividade'?'selected':''}>Demais atividades: 1 domingo a cada 7 semanas</option>
+        <option value="outro" ${state.domModelo==='outro'?'selected':''}>Outro período (convenção coletiva)</option></select></label>
+      ${state.domModelo==='outro'?`<label class="f" for="f-domn">A cada quantas semanas, no máximo<input type="number" id="f-domn" min="1" max="12" value="${state.domN}"></label>`:'<span></span>'}
+    </div>
+    <p class="small muted">${baseDom} Para mulheres vale o revezamento quinzenal (CLT, art. 386).</p>`:''}
+  </section>${nav(2,'Continuar →','next')}`;
+}
+
+function etapa4(){
+  const abertos=state.dias.filter(d=>d.aberto).length, ferTrab=state.feriados.filter(f=>f.abre).length;
+  return `<section class="panel">
+    <div class="head"><h2>Vai abrir nos feriados?</h2><p class="muted">Confira as datas de ${nomeMes()}. Por padrão, todos folgam nos feriados listados.</p></div>
+    <div class="list">${state.feriados.length? state.feriados.map((f,k)=>`<div class="hol">
+      <div class="what"><b>${esc(f.nome)}</b><span class="small muted">${br(fromIso(f.data))} · ${f.tipo==='nacional'?'nacional':f.tipo==='confirmar'?'confirme a lei municipal':'incluído por você'}</span></div>
+      <div class="row"><label class="row small" style="gap:8px"><input type="checkbox" data-fabre="${k}" id="fe-${k}" ${f.abre?'checked':''}> A empresa abre neste feriado</label>
+      <button type="button" class="btn link danger" data-act="remfer" data-k="${k}">Remover</button></div></div>`).join('')
+      : '<p class="muted">Nenhum feriado nacional neste mês.</p>'}</div>
+    <p class="small muted">Se uma data não for feriado na sua empresa, use “Remover”: o dia segue o funcionamento normal.</p>
+    <details class="more"><summary>Adicionar outro feriado (estadual, municipal ou da empresa)</summary>
+      <form id="f-fer" class="grid g3" style="align-items:end">
+        <label class="f">Data<input type="date" id="nf-data" min="${ymVal()}-01" max="${iso(ud(state.ano,state.mes+1,0))}" required></label>
+        <label class="f">Nome<input type="text" id="nf-nome" placeholder="Ex.: Aniversário da cidade" required></label>
+        <button type="submit" class="btn">Adicionar</button>
+      </form></details>
+    <div class="note">${ferTrab? 'Quem trabalhar em feriado (FE) recebe uma folga compensatória (FC) na mesma semana ou na seguinte. Se não couber, o dia aparece para pagamento em dobro (Lei 605/1949, art. 9º).'
+      :'Os feriados em que a empresa não abre (FER) contam como uma das folgas da semana de todos.'}</div>
+    <div><h3>Pronto para montar</h3><p class="muted">${state.equipe.length} pessoa${state.equipe.length===1?'':'s'} · escala ${state.tipo==='5x2'?'5×2':'6×1'} · ${abertos} dia${abertos===1?'':'s'} aberto${abertos===1?'':'s'} por semana · ${ferTrab} feriado${ferTrab===1?'':'s'} com trabalho em ${nomeMes()}.</p></div>
+  </section>${nav(3,'Montar minha escala →','montar')}`;
+}
+
+function telaInviavel(){
+  const m=state.resultado.motivo;
+  return `<section class="panel">
+    <div class="head"><h2>Não há escala válida para ${nomeMes()}</h2><p class="muted">O gerador testou as combinações possíveis e nenhuma cumpre ao mesmo tempo o mínimo de pessoas e as regras de folga.</p></div>
+    <div class="note bad"><b>${esc(m.titulo)}</b><ul>${m.detalhes.map(d=>`<li>${esc(d)}</li>`).join('')}</ul></div>
+    <div><h3>O que você pode fazer</h3><ul>${m.sugestoes.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
+    <p class="small muted">O gerador nunca resolve o conflito descumprindo uma regra de folga, domingo ou jornada.</p></div>
+    <div class="row"><button type="button" class="btn primary" data-goto="3">Ajustar dias e mínimos</button><button type="button" class="btn" data-goto="2">Ajustar equipe</button></div>
+  </section>`;
+}
+
+function resultado(){
+  const R=state.resultado;
+  if(!R.ok) return telaInviavel();
+  const ctx=R.ctx, off=R.off, a=M.conferir(ctx, off);
+  R.valido=a.valido;
+  const dias=ctx.days.filter(x=>x.inMonth);
+  const nI=a.nIrregular, nA=a.alertas.filter(x=>x.nivel==='atencao').length;
+  const head=dias.map(x=>`<th class="${x.dw===0?'wk':''} ${x.dw===6?'sun':''}">${String(x.d.getUTCDate()).padStart(2,'0')}<span class="wd">${DOW[x.dw]}</span></th>`).join('');
+  const rows=state.equipe.map((p,e)=>{
+    const hor=M.jornada(p)?`${p.entrada}–${p.saida}`:'';
+    return `<tr><td class="name"><b>${esc(p.nome)}</b><span>${esc([p.cargo,p.grupo].filter(Boolean).join(' · '))}</span></td>${dias.map(x=>{
+      const c=a.lab[e][x.i], lock=!x.aberto || ctx.fixed[e][x.i]!==null, ed=R.edit[e].has(x.i);
+      return `<td class="cell c-${c} ${x.dw===0?'wk':''} ${lock?'locked':''} ${ed?'edited':''}" data-e="${e}" data-i="${x.i}" ${lock?'':'tabindex="0" role="button"'} title="${esc(p.nome)} · ${br(x.d)} · ${NOME_COD[c]}${x.fer?' · '+esc(x.fer.nome):''}${lock?'':' · clique para alternar'}">${c}${(c==='T'||c==='FE')&&hor?`<small>${hor}</small>`:''}</td>`;}).join('')}</tr>`;
+  }).join('');
+  const pres=dias.map(x=>{ const n=x.aberto?a.cnt[x.i]:0; return `<td class="${x.dw===0?'wk':''} ${x.aberto && n<x.min?'short':''}">${n}</td>`; }).join('');
+  const mins=dias.map(x=>`<td class="${x.dw===0?'wk':''}">${x.min}</td>`).join('');
+  const res=M.resumo(ctx, off, a.lab);
+  const ordem={irregular:0, atencao:1, info:2};
+  const alertas=[...a.alertas].sort((x,y)=>ordem[x.nivel]-ordem[y.nivel]);
+  const bloqueio = a.valido ? '' : 'disabled title="Corrija as irregularidades para baixar"';
+  return `<section class="panel">
+    <div class="row between"><div class="head"><h2>Escala de ${nomeMes()}</h2><p class="muted">Clique numa célula para trocar trabalho e folga. As regras são conferidas de novo a cada mudança.</p></div>
+      <div class="row"><button type="button" class="btn" data-act="pdf" ${bloqueio}>Baixar PDF</button><button type="button" class="btn primary" data-act="xlsx" ${bloqueio}>Baixar Excel</button></div></div>
+    ${a.valido ? '' : `<div class="note bad"><b>Escala inválida: ${nI} irregularidade${nI===1?'':'s'}.</b> Os downloads ficam bloqueados até corrigir. Desfaça as mudanças marcadas na grade ou use “Gerar outra versão”.</div>`}
+    <div class="summary-box">
+      <div class="stat ${nI?'bad':'ok'}"><b>${nI}</b><span>irregularidade${nI===1?'':'s'}</span></div>
+      <div class="stat ${nA?'warn':'ok'}"><b>${nA}</b><span>ponto${nA===1?'':'s'} de atenção</span></div>
+      <div class="stat"><b>${state.equipe.length}</b><span>pessoas</span></div>
+      <div class="stat"><b>${dias.filter(x=>x.aberto).length}</b><span>dias abertos no mês</span></div>
+    </div>
+    <div class="legend">${['T','RSR','FER','FG','FE','FC'].map(c=>`<span><i class="c-${c}">${c}</i>${NOME_COD[c]}</span>`).join('')}</div>
+    <div class="tablewrap"><table class="esc"><thead><tr><th class="name">Pessoa</th>${head}</tr></thead>
+      <tbody>${rows}<tr class="tot"><td class="name">Presentes</td>${pres}</tr><tr class="tot"><td class="name">Mínimo</td>${mins}</tr></tbody></table></div>
+    <p class="small muted">RSR: repouso semanal obrigatório. FER: feriado sem trabalho, conta como repouso. FG: folga além do obrigatório. FC: folga em troca de feriado trabalhado, não conta como repouso.</p>
+    <div class="row"><button type="button" class="btn" data-act="outra">Gerar outra versão</button>
+      <button type="button" class="btn" data-act="continuar" ${a.valido?'':'disabled'}>Continuar no mês seguinte →</button>
+      <button type="button" class="btn" data-goto="4">← Voltar e ajustar dados</button></div>
+  </section>
+  <section class="panel"><div class="head"><h2>Conferência</h2><p class="muted">O que o gerador verificou nesta escala.</p></div>
+    ${nI===0?'<div class="note ok"><b>Mínimo de pessoas, folgas semanais, domingos e dias seguidos conferidos.</b> Veja abaixo os pontos que dependem de você.</div>':''}
+    <div class="alerts">${alertas.map(x=>`<div class="alert ${x.nivel}"><span class="lvl">${x.nivel==='irregular'?'Irregular':x.nivel==='atencao'?'Atenção':'Informação'}</span><div><b>${esc(x.titulo)}</b><div class="small">${esc(x.texto)}</div></div><span class="base">${esc(x.base)}</span></div>`).join('')}</div>
+  </section>
+  <section class="panel"><div class="head"><h2>Resumo por pessoa</h2></div>
+    <div class="tablewrap" style="border:none"><table class="res"><thead><tr><th>Pessoa</th><th>Dias trabalhados</th><th>RSR</th><th>FER</th><th>FG</th><th>FC</th><th>Domingos trabalhados</th><th>Feriados trabalhados</th><th>Horas no mês</th></tr></thead>
+    <tbody>${res.map(r=>`<tr><td>${esc(r.p.nome)}</td><td>${r.trab}</td><td>${r.RSR}</td><td>${r.FER}</td><td>${r.FG}</td><td>${r.FC}</td><td>${r.dom}</td><td>${r.FE}</td><td>${fmtH(r.horas)}</td></tr>`).join('')}</tbody></table></div>
+  </section>`;
+}
+
+function render(){
+  app.className = 'wrap'+(state.etapa===5?' wide':'');
+  const body = state.etapa===1?etapa1():state.etapa===2?etapa2():state.etapa===3?etapa3():state.etapa===4?etapa4():resultado();
+  app.innerHTML = cabecalho() + stepper() + body +
+    `<footer>Ferramenta de apoio. A escala não substitui a conferência do contrato, da convenção coletiva e da folha de pagamento. Nenhum dado é salvo: ao sair da página, as informações se perdem.</footer>`;
+}
+
+/* ================= eventos ================= */
+function validarEquipe(){
+  if(!state.equipe.length){ toast('Adicione pelo menos uma pessoa.'); return false; }
+  const sem=state.equipe.findIndex(p=>!p.nome.trim()); if(sem>=0){ toast(`Informe o nome da pessoa ${sem+1}.`); return false; }
+  const nomes=state.equipe.map(p=>p.nome.trim()), dup=nomes.find((n,i)=>nomes.indexOf(n)!==i);
+  if(dup){ toast(`Há duas pessoas chamadas "${dup}". Diferencie os nomes.`); return false; }
+  return true;
+}
+function irPara(n){
+  if(n>=3 && state.etapa<=2 && !validarEquipe()) return;
+  state.etapa=n; render(); window.scrollTo({top:0});
+}
+function gerar(){
+  const r=M.gerarEscala(cfgAtual());
+  state.resultado={...r, edit:state.equipe.map(()=>new Set())};
+}
+function montar(){
+  if(!validarEquipe()) return;
+  if(!state.dias.some(d=>d.aberto)){ toast('Marque pelo menos um dia de funcionamento.'); return; }
+  gerar(); state.etapa=5; render(); window.scrollTo({top:0});
+}
+function continuar(){
+  const R=state.resultado; if(!R || !R.ok || !R.valido) return;
+  const h=M.historicoDe(R.ctx, R.off);
+  h.rotulo=nomeMes();
+  let y=state.ano, m=state.mes+1; if(m>11){m=0;y++;}
+  state.historico=h; state.ano=y; state.mes=m; state.feriados=M.feriadosDoMes(y,m);
+  if(!pode6x1()) state.tipo='5x2';
+  state.resultado=null; state.etapa=4; render(); window.scrollTo({top:0});
+  toast(`Continuando em ${nomeMes()}. Confira os feriados e monte a escala.`);
+}
+app.addEventListener('click', ev=>{
+  const g=ev.target.closest('[data-goto]'); if(g){ irPara(Number(g.dataset.goto)); return; }
+  const b=ev.target.closest('[data-act]');
+  if(b){
+    if(b.disabled) return;
+    const act=b.dataset.act, i=Number(b.dataset.i);
+    if(act==='next') irPara(state.etapa+1);
+    else if(act==='montar') montar();
+    else if(act==='limpar'){ state.equipe=[]; state.exemplo=false; state.grupoMin={}; render(); }
+    else if(act==='remover'){ state.equipe.splice(i,1); render(); }
+    else if(act==='duplicar'){ const c={...state.equipe[i], nome:state.equipe[i].nome+' (cópia)', id:uid++}; state.equipe.splice(i+1,0,c); render(); }
+    else if(act==='copiar'){ const s=state.equipe[i]; state.equipe.forEach(p=>{p.entrada=s.entrada;p.saida=s.saida;p.intIni=s.intIni;p.intFim=s.intFim;}); render(); toast('Horário copiado para toda a equipe.'); }
+    else if(act==='padrao'){ const v=id=>document.getElementById(id).value; state.equipe.forEach(p=>{p.entrada=v('h-ent');p.saida=v('h-sai');p.intIni=v('h-ii');p.intFim=v('h-if');}); render(); toast('Horário aplicado a todos.'); }
+    else if(act==='remfer'){ state.feriados.splice(Number(b.dataset.k),1); render(); }
+    else if(act==='outra'){ state.seed++; gerar(); render(); toast(state.resultado.ok?'Nova versão gerada.':'Não há escala válida com estes dados.'); }
+    else if(act==='continuar') continuar();
+    else if(act==='semhist'){ state.historico=null; render(); toast('O mês anterior não será considerado.'); }
+    else if(act==='pdf') baixarPDF();
+    else if(act==='xlsx') baixarExcel();
+    return;
+  }
+  const cell=ev.target.closest('td.cell'); if(cell && !cell.classList.contains('locked')) alternar(cell);
+});
+app.addEventListener('keydown', ev=>{ const cell=ev.target.closest('td.cell'); if(cell && (ev.key==='Enter'||ev.key===' ') && !cell.classList.contains('locked')){ ev.preventDefault(); alternar(cell); } });
+function alternar(cell){
+  const R=state.resultado, e=Number(cell.dataset.e), i=Number(cell.dataset.i);
+  R.off[e][i]=!R.off[e][i];
+  if(R.edit[e].has(i)) R.edit[e].delete(i); else R.edit[e].add(i);
+  const y=window.scrollY, tw=document.querySelector('.tablewrap'), sx=tw?tw.scrollLeft:0;
+  render();
+  window.scrollTo({top:y}); const tw2=document.querySelector('.tablewrap'); if(tw2) tw2.scrollLeft=sx;
+  const c2=document.querySelector(`td.cell[data-e="${e}"][data-i="${i}"]`); if(c2) c2.focus({preventScroll:true});
+}
+app.addEventListener('input', ev=>{
+  const t=ev.target;
+  const card=t.closest('.person');
+  if(card && t.dataset.f){
+    const p=state.equipe[Number(card.dataset.i)]; p[t.dataset.f]=t.value;
+    card.querySelector('[data-sum="nome"]').textContent=p.nome||'Sem nome';
+    card.querySelector('[data-sum="res"]').textContent=resumoPessoa(p);
+    card.querySelector('[data-sum="jor"]').textContent=resumoJornada(p);
+    state.exemplo=false; return;
+  }
+  if(t.dataset.min!==undefined){ state.dias[Number(t.dataset.min)].min=Math.max(0,Number(t.value)||0); return; }
+  if(t.dataset.gmin!==undefined){ state.grupoMin[t.dataset.gmin]=Math.max(0,Number(t.value)||0); return; }
+  if(t.id==='f-domn'){ state.domN=Math.max(1,Number(t.value)||1); return; }
+});
+app.addEventListener('change', ev=>{
+  const t=ev.target;
+  if(t.id==='f-mes' && t.value){ const [y,m]=t.value.split('-').map(Number); state.ano=y; state.mes=m-1; state.feriados=M.feriadosDoMes(y,m-1); state.resultado=null;
+    if(state.historico && state.historico.ate!==iso(ud(y,m-1,0))) state.historico=null;
+    render(); return; }
+  if(t.id==='f-tipo'){ state.tipo=t.value; render(); return; }
+  if(t.dataset.dia!==undefined){ state.dias[Number(t.dataset.dia)].aberto=t.checked; render(); return; }
+  if(t.id==='f-fechadom'){ state.dias[6].aberto=!t.checked; render(); return; }
+  if(t.id==='f-dom'){ state.domModelo=t.value; render(); return; }
+  if(t.dataset.fabre!==undefined){ state.feriados[Number(t.dataset.fabre)].abre=t.checked; render(); return; }
+});
+app.addEventListener('submit', ev=>{
+  ev.preventDefault();
+  if(ev.target.id==='f-add'){
+    const nome=document.getElementById('n-nome').value.trim(); if(!nome) return;
+    if(state.exemplo){ state.equipe=[]; state.exemplo=false; state.grupoMin={}; }
+    const base=state.equipe[state.equipe.length-1];
+    state.equipe.push(pessoa({nome, cargo:document.getElementById('n-cargo').value.trim(), sexo:document.getElementById('n-sexo').value,
+      ...(base?{entrada:base.entrada,saida:base.saida,intIni:base.intIni,intFim:base.intFim}:{})}));
+    render(); document.getElementById('n-nome').focus();
+  } else if(ev.target.id==='f-fer'){
+    const data=document.getElementById('nf-data').value, nome=document.getElementById('nf-nome').value.trim();
+    if(!data||!nome) return;
+    if(!data.startsWith(ymVal())){ toast('Escolha uma data dentro do mês da escala.'); return; }
+    state.feriados=state.feriados.filter(f=>f.data!==data);
+    state.feriados.push({data, nome, tipo:'manual', abre:false});
+    state.feriados.sort((a,b)=>a.data.localeCompare(b.data)); render();
+  }
+});
+
+/* ================= downloads (bloqueados se a escala for inválida — D6) ================= */
+async function salvar(nome, dados){
+  let dl=null;
+  try{ if(window.claude && typeof window.claude.use==='function') dl=await window.claude.use('downloads'); }catch(_){ dl=null; }
+  if(dl){
+    try{ await dl.save({filename:nome, data:dados}); toast('Arquivo enviado para download.'); }
+    catch(err){ toast(err && err.code==='declined' ? 'Download cancelado.' : 'Não foi possível baixar o arquivo aqui.'); }
+    return;
+  }
+  const blob = dados instanceof Blob ? dados : new Blob([dados]);
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nome; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+}
+function dadosExport(){
+  const R=state.resultado; if(!R || !R.ok) return null;
+  const a=M.conferir(R.ctx, R.off);
+  if(!a.valido){ toast('A escala tem irregularidades. Corrija antes de baixar.'); return null; }
+  return {ctx:R.ctx, off:R.off, a, res:M.resumo(R.ctx, R.off, a.lab)};
+}
+const nomeArquivo = ext => `escala-${state.tipo}-${ymVal()}.${ext}`;
+function semanasDoMes(ctx){
+  const dias=ctx.days.filter(x=>x.inMonth), out=[]; let cur=[];
+  dias.forEach(x=>{ if(x.dw===0 && cur.length){ out.push(cur); cur=[]; } cur.push(x); });
+  if(cur.length) out.push(cur); return out;
+}
+const COR = {T:[220,240,227], RSR:[232,236,238], FG:[227,235,245], FER:[251,231,190], FE:[231,218,246], FC:[212,238,240]};
+const TXT = {T:[20,92,53], RSR:[85,100,107], FG:[59,88,120], FER:[122,75,0], FE:[90,47,140], FC:[21,94,102]};
+const LEGENDA = 'T trabalho · RSR repouso semanal · FER feriado sem trabalho · FG folga da escala · FE trabalho em feriado · FC folga compensatória';
+const celula = (p,c) => (c==='T'||c==='FE') ? `${c}\n${p.entrada}–${p.saida}` : c;
+const ordemNivel={irregular:0, atencao:1, info:2}, nomeNivel={irregular:'Irregular', atencao:'Atenção', info:'Informação'};
+
+/* as fontes padrão do PDF não têm travessão nem aspas curvas */
+const pt = v => String(v).replace(/[–—]/g,'-').replace(/[“”]/g,'"');
+const ptRows = rows => rows.map(r=>r.map(pt));
+async function baixarPDF(){
+  if(!window.jspdf){ toast('A biblioteca de PDF não carregou. Recarregue a página.'); return; }
+  const D=dadosExport(); if(!D) return;
+  const {ctx, a, res}=D;
+  const doc=new window.jspdf.jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+  const _at=doc.autoTable.bind(doc);
+  doc.autoTable=o=>_at({...o, head:o.head&&ptRows(o.head), body:ptRows(o.body)});
+  const _tx=doc.text.bind(doc);
+  doc.text=(s,...r)=>_tx(pt(s),...r);
+  const titulo=`Escala ${state.tipo==='5x2'?'5×2':'6×1'} · ${nomeMes()}`;
+  semanasDoMes(ctx).forEach((sem,si)=>{
+    if(si>0) doc.addPage();
+    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,48,42); doc.text(titulo, 14, 15);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(86,107,101);
+    doc.text(`${br(sem[0].d)} a ${br(sem[sem.length-1].d)} · ${LEGENDA}`, 14, 21);
+    const head=[['Pessoa', ...sem.map(x=>`${ddmm(x.d)}\n${DOW_LONG[x.dw]}`)]];
+    const body=state.equipe.map((p,e)=>[`${p.nome}\n${[p.cargo,p.grupo].filter(Boolean).join(' · ')}`, ...sem.map(x=>celula(p, a.lab[e][x.i]))]);
+    body.push(['Presentes', ...sem.map(x=>String(x.aberto?a.cnt[x.i]:0))]);
+    body.push(['Mínimo', ...sem.map(x=>String(x.min))]);
+    doc.autoTable({head, body, startY:26, theme:'grid', styles:{fontSize:8, cellPadding:2, valign:'middle', lineColor:[211,222,218], lineWidth:0.2},
+      headStyles:{fillColor:[14,102,86], textColor:255, fontStyle:'bold'}, columnStyles:{0:{cellWidth:48}},
+      didParseCell:d=>{
+        if(d.section!=='body') return;
+        if(d.row.index>=state.equipe.length){ d.cell.styles.fontStyle='bold'; d.cell.styles.fillColor=[234,240,238]; return; }
+        if(d.column.index===0) return;
+        const c=String(d.cell.raw).split('\n')[0];
+        if(COR[c]){ d.cell.styles.fillColor=COR[c]; d.cell.styles.textColor=TXT[c]; }
+      }});
+    doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${si+1}`, 283, 203, {align:'right'});
+  });
+  doc.addPage();
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(20,48,42); doc.text('Resumo e conferência', 14, 15);
+  doc.autoTable({startY:20, theme:'grid', styles:{fontSize:8.5, cellPadding:2}, headStyles:{fillColor:[14,102,86]},
+    head:[['Pessoa','Dias trabalhados','RSR','FER','FG','FC','Domingos trabalhados','Feriados trabalhados','Horas no mês']],
+    body:res.map(r=>[r.p.nome, r.trab, r.RSR, r.FER, r.FG, r.FC, r.dom, r.FE, fmtH(r.horas)])});
+  doc.autoTable({startY:doc.lastAutoTable.finalY+8, theme:'grid', styles:{fontSize:8, cellPadding:2}, headStyles:{fillColor:[14,102,86]},
+    columnStyles:{0:{cellWidth:24}, 3:{cellWidth:60}},
+    head:[['Nível','Item','Detalhe','Base']],
+    body:[...a.alertas].sort((x,y)=>ordemNivel[x.nivel]-ordemNivel[y.nivel]).map(x=>[nomeNivel[x.nivel], x.titulo, x.texto, x.base])});
+  doc.setFontSize(8); doc.setTextColor(120);
+  doc.text('Ferramenta de apoio. Confira contrato, convenção coletiva e folha de pagamento antes de usar.', 14, 203);
+  await salvar(nomeArquivo('pdf'), doc.output('arraybuffer'));
+}
+
+async function baixarExcel(){
+  if(!window.ExcelJS){ toast('A biblioteca de Excel não carregou. Recarregue a página.'); return; }
+  const D=dadosExport(); if(!D) return;
+  const {ctx, a, res}=D;
+  const wb=new ExcelJS.Workbook(); wb.creator='Gerador de Escalas';
+  const ws=wb.addWorksheet('Escala', {views:[{state:'frozen', xSplit:3, ySplit:2}]});
+  const dias=ctx.days.filter(x=>x.inMonth);
+  const argb = rgb => 'FF'+rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+  const cab = c => { c.font={bold:true, color:{argb:'FFFFFFFF'}}; c.fill={type:'pattern', pattern:'solid', fgColor:{argb:'FF0E6656'}}; c.alignment={horizontal:'center', vertical:'middle', wrapText:true}; };
+  ws.addRow([`Escala ${state.tipo==='5x2'?'5×2':'6×1'} · ${nomeMes()}`]);
+  ws.mergeCells(1,1,1,3+dias.length);
+  ws.getRow(1).font={bold:true, size:14, color:{argb:'FF14302A'}};
+  ws.addRow(['Pessoa','Cargo','Grupo', ...dias.map(x=>`${ddmm(x.d)}\n${DOW[x.dw]}`)]);
+  ws.getRow(2).height=30; ws.getRow(2).eachCell(cab);
+  state.equipe.forEach((p,e)=>{
+    const row=ws.addRow([p.nome, p.cargo, p.grupo, ...dias.map(x=>celula(p, a.lab[e][x.i]))]);
+    row.height=30;
+    dias.forEach((x,k)=>{ const c=a.lab[e][x.i], cell=row.getCell(4+k);
+      cell.fill={type:'pattern', pattern:'solid', fgColor:{argb:argb(COR[c])}}; cell.font={color:{argb:argb(TXT[c])}, bold:true};
+      cell.alignment={horizontal:'center', vertical:'middle', wrapText:true}; });
+  });
+  const rp=ws.addRow(['Pessoas presentes','','', ...dias.map(x=>x.aberto?a.cnt[x.i]:0)]);
+  const rm=ws.addRow(['Mínimo pedido','','', ...dias.map(x=>x.min)]);
+  [rp,rm].forEach(r=>{ r.font={bold:true}; r.eachCell(c=>{ c.alignment={horizontal:'center'}; c.fill={type:'pattern', pattern:'solid', fgColor:{argb:'FFEAF0EE'}}; }); r.getCell(1).alignment={horizontal:'left'}; });
+  ws.getColumn(1).width=24; ws.getColumn(2).width=16; ws.getColumn(3).width=16;
+  for(let k=0;k<dias.length;k++) ws.getColumn(4+k).width=12;
+  ws.addRow([]);
+  ws.addRow([`Legenda: ${LEGENDA}`]).font={italic:true, color:{argb:'FF566B65'}};
+
+  const wr=wb.addWorksheet('Resumo');
+  wr.addRow(['Pessoa','Cargo','Grupo','Dias trabalhados','RSR','FER','FG','FC','Domingos trabalhados','Feriados trabalhados','Horas no mês']);
+  res.forEach(r=>wr.addRow([r.p.nome, r.p.cargo, r.p.grupo, r.trab, r.RSR, r.FER, r.FG, r.FC, r.dom, r.FE, fmtH(r.horas)]));
+  wr.getRow(1).eachCell(cab);
+  wr.columns.forEach((c,k)=>c.width= k<3?22:14);
+
+  const wa=wb.addWorksheet('Conferência');
+  wa.addRow(['Nível','Item','Detalhe','Base']);
+  [...a.alertas].sort((x,y)=>ordemNivel[x.nivel]-ordemNivel[y.nivel]).forEach(x=>{ const r=wa.addRow([nomeNivel[x.nivel], x.titulo, x.texto, x.base]); r.alignment={wrapText:true, vertical:'top'}; });
+  wa.getRow(1).eachCell(cab);
+  wa.getColumn(1).width=12; wa.getColumn(2).width=50; wa.getColumn(3).width=70; wa.getColumn(4).width=40;
+  wa.addRow([]); wa.addRow(['Ferramenta de apoio. Confira contrato, convenção coletiva e folha de pagamento antes de usar.']);
+
+  const buf=await wb.xlsx.writeBuffer();
+  await salvar(nomeArquivo('xlsx'), buf);
+}
+
+render();
+</script>
+</body>
+</html>
