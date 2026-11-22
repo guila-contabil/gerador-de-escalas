@@ -54,7 +54,8 @@
     if (cfg.tipo === "5x2") return 2;
     return fimSemana(ws) >= VIG_2F ? 2 : 1;
   }
-  const regimeAntigo = ws => fimSemana(ws) < VIG_2F; // J12 (D2): limite de 6 dias seguidos só antes da EC 141
+  const regimeAntigo = ws => fimSemana(ws) < VIG_2F;
+  const MAX_DIAS_SEGUIDOS = 6; // J12 (D10): OJ 410 da SDI-1/TST e Tema Repetitivo 265 — vale em qualquer regime
   function limiteSemanal(ws) { // J04 (D7: horas de relógio)
     const f = fimSemana(ws);
     return f >= VIG_40 ? 2400 : f >= VIG_2F ? 2520 : 2640;
@@ -129,6 +130,14 @@
       const h = hist && hist.porPessoa && hist.porPessoa[p.nome];
       return h && Object.prototype.hasOwnProperty.call(h, x.k) ? !!h[x.k] : null;
     }));
+    // dias travados pelo usuário (edições manuais preservadas na correção automática)
+    const travas = cfg.travas || {};
+    const travado = cfg.equipe.map(p => days.map(x => {
+      const t = travas[p.nome];
+      return t && Object.prototype.hasOwnProperty.call(t, x.k) ? !!t[x.k] : null;
+    }));
+    // o que o motor não pode mudar: mês anterior + travas
+    const fixo = cfg.equipe.map((_, e) => days.map((_, i) => fixed[e][i] !== null ? fixed[e][i] : travado[e][i]));
     // estado anterior ao horizonte: sequência de domingos trabalhados e de dias seguidos
     const streak0 = new Array(E).fill(0), run0 = new Array(E).fill(0);
     const temHistorico = cfg.equipe.map(p => !!(hist && hist.porPessoa && hist.porPessoa[p.nome]));
@@ -139,7 +148,7 @@
       for (const k of antes) if (dowOf(fromIso(k)) === 6) streak0[e] = h[k] ? 0 : streak0[e] + 1;
       for (let d = addDays(start, -1); ; d = addDays(d, -1)) { const k = iso(d); if (!(k in h) || h[k]) break; run0[e]++; }
     });
-    return { cfg, days, weeks, grupoDe, gmin, first, last, start, end, fixed, streak0, run0, temHistorico, E };
+    return { cfg, days, weeks, grupoDe, gmin, first, last, start, end, fixed, travado, fixo, streak0, run0, temHistorico, E };
   }
 
   /* ============ números aleatórios com semente ============ */
@@ -184,7 +193,8 @@
 
   /* ============ fase 1: folgas de domingo no mês inteiro ============ */
   function* planosDomingo(ctx, rnd, falhas, orcamento) {
-    const { cfg, days, E, gmin, grupoDe, fixed } = ctx;
+    const { cfg, days, E, gmin, grupoDe } = ctx;
+    const fixed = ctx.fixo;
     const S = days.filter(x => x.dw === 6).map(x => x.i);
     const N = cfg.equipe.map(p => janelaDomingo(cfg, p));
     const ff = cfg.equipe.map(p => (p.folgaFixa === "" || p.folgaFixa == null) ? -1 : Number(p.folgaFixa));
@@ -219,7 +229,7 @@
       }
       const obrig = [], livres = [], trabalha = [], motivo = {};
       for (let e = 0; e < E; e++) {
-        if (fixed[e][i] === true) { obrig.push(e); motivo[e] = "dia já definido no mês anterior"; }
+        if (fixed[e][i] === true) { obrig.push(e); motivo[e] = ctx.fixed[e][i] !== null ? "dia já definido no mês anterior" : "folga marcada manualmente"; }
         else if (fixed[e][i] === false) trabalha.push(e);
         else if (ff[e] === 6) { obrig.push(e); motivo[e] = "folga fixa no domingo"; }
         else if (streak[e] >= N[e] - 1) { obrig.push(e); motivo[e] = baseDomingo(cfg, cfg.equipe[e]); }
@@ -260,7 +270,8 @@
   }
 
   function semana(ctx, off, w, ultimaFolga, pendFC, rnd) {
-    const { days, E, gmin, grupoDe, fixed } = ctx;
+    const { days, E, gmin, grupoDe } = ctx;
+    const fixed = ctx.fixo;
     const idx = [...Array(7)].map((_, k) => w.i0 + k), dom = w.i0 + 6;
     const c = contar(ctx, off);
     // dias já abaixo do mínimo por causa de folgas fixas, domingo ou mês anterior
@@ -285,8 +296,8 @@
       const tem = idx.filter(i => off[e][i]).length;
       let precisa = Math.max(0, w.req - tem);
       let cedo = 0, prazo = Infinity;
-      if (w.antigo) {
-        prazo = ultimaFolga[e] + 7;
+      {
+        prazo = ultimaFolga[e] + MAX_DIAS_SEGUIDOS + 1;   // OJ 410: folga até o 7º dia
         if (prazo <= w.i0 + 6 && !idx.some(i => off[e][i] && i <= prazo)) { cedo = 1; if (prazo < w.i0) prazo = w.i0; }
       }
       const resto = Math.max(0, precisa - cedo);
@@ -361,7 +372,8 @@
   /* ============ geração ============ */
   function gerarEscala(cfg, opcoes = {}) {
     const ctx = contexto(cfg);
-    const { days, E, weeks, fixed } = ctx;
+    const { days, E, weeks } = ctx;
+    const fixed = ctx.fixo;
     if (!E) return { ok: false, ctx, motivo: { titulo: "Nenhuma pessoa na equipe", detalhes: [], sugestoes: ["Adicione pelo menos uma pessoa."] } };
     const rnd = rng32((Number(cfg.seed) || 1) * 7919 + cfg.ano * 12 + cfg.mes);
     const ff = cfg.equipe.map(p => (p.folgaFixa === "" || p.folgaFixa == null) ? -1 : Number(p.folgaFixa));
@@ -467,6 +479,19 @@
     return { lab, dobras };
   }
 
+  /* ============ OJ 410: sequências de mais de 6 dias de trabalho ============ */
+  function sequenciasLongas(ctx, off, e) {
+    const { days } = ctx, out = [];
+    let run = ctx.run0[e], ini = run ? addDays(days[0].d, -run) : null, toca = false;
+    const fecha = i => { if (run > MAX_DIAS_SEGUIDOS && toca) out.push({ ini, fim: days[i - 1].d, dias: run }); };
+    for (let i = 0; i < days.length; i++) {
+      if (!days[i].aberto || off[e][i]) { fecha(i); run = 0; toca = false; ini = null; }
+      else { if (!run) ini = days[i].d; run++; if (days[i].inMonth) toca = true; }
+    }
+    fecha(days.length);
+    return out;
+  }
+
   /* ============ conferência (independente do motor) ============ */
   function conferir(ctx, off) {
     const { cfg, days, weeks, E, gmin, grupoDe } = ctx;
@@ -505,13 +530,13 @@
       }
       if (viol.length) add("irregular", `${nome(e)}: domingos seguidos de trabalho acima do permitido`,
         `Precisa de pelo menos 1 domingo de folga a cada ${N} semanas. Domingos em excesso: ${viol.join(", ")}.`, baseDomingo(cfg, p));
-      // dias seguidos no regime anterior (OJ 410)
-      let run = ctx.run0[e], seq = [];
-      for (let i = 0; i < days.length; i++) {
-        if (!days[i].aberto || off[e][i]) run = 0;
-        else { run++; if (run > 6 && weeks[Math.floor(i / 7)].antigo && days[i].inMonth) seq.push(ddmm(days[i].d)); }
+      // OJ 410: sequência contínua, sem reiniciar na troca de semana, mês ou ano
+      for (const v of sequenciasLongas(ctx, off, e)) {
+        add("irregular", `Violação da OJ 410 do TST: ${nome(e)}`,
+          `Período: ${br(v.ini)} a ${br(v.fim)}. Dias consecutivos trabalhados: ${v.dias}. Irregularidade: ausência de repouso semanal dentro do limite de 6 dias. ` +
+          `Correção sugerida: antecipar uma folga antes do 7º dia consecutivo (botão “Corrigir automaticamente”).`,
+          "CF, art. 7º, XV; OJ 410 da SDI-1 do TST; Tema Repetitivo 265 do TST");
       }
-      if (seq.length) add("irregular", `${nome(e)}: mais de 6 dias seguidos de trabalho`, `No regime anterior à EC 141/2026 a folga deve ocorrer até o 7º dia. Dias: ${seq.join(", ")}.`, "OJ 410 da SDI-1/TST");
 
       // jornada (relógio — D7, D8)
       const j = jornada(p);
@@ -535,6 +560,18 @@
       }
       if (exc.length) add("irregular", `${nome(e)}: acima do limite semanal de horas`, `Semanas: ${exc.join("; ")}.`, "CF, art. 7º, XIII; EC 141/2026, art. 6º");
     }
+
+    // OJ 410 sem o mês anterior: não presume descanso
+    const incompletos = [];
+    for (let e = 0; e < E; e++) {
+      if (ctx.temHistorico[e]) continue;
+      let L = 0;
+      for (let i = 0; i < days.length && days[i].aberto && !off[e][i]; i++) L++;
+      if (L > 0) incompletos.push(`${nome(e)} trabalha ${L} dia${L === 1 ? "" : "s"} seguido${L === 1 ? "" : "s"} desde ${br(days[0].d)}; se trabalhou ${7 - L} ou mais dias imediatamente antes, haverá violação`);
+    }
+    if (incompletos.length) add("nverif", "OJ 410: validação incompleta no início do período",
+      `Sem a escala anterior não dá para saber quantos dias seguidos cada pessoa já vinha trabalhando. ${incompletos.join("; ")}. Gere o mês anterior e use “Montar o mês seguinte” para concluir a verificação.`,
+      "CF, art. 7º, XV; OJ 410 da SDI-1 do TST");
 
     // feriados
     days.filter(x => x.inMonth && x.fer).forEach(x => {
@@ -587,7 +624,7 @@
   const Motor = {
     DOW, VIG_2F, VIG_40, ud, addDays, iso, dowOf, ddmm, br, fromIso, toMin, fmtH,
     pascoa, feriadosDoAno, feriadosDoMes, folgasSemana, regimeAntigo, limiteSemanal, janelaDomingo, baseDomingo,
-    jornada, contexto, contar, gerarEscala, rotular, conferir, resumo, historicoDe, rng32,
+    jornada, contexto, contar, gerarEscala, rotular, conferir, resumo, historicoDe, rng32, sequenciasLongas, MAX_DIAS_SEGUIDOS,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = Motor;
   else root.Motor = Motor;

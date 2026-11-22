@@ -158,6 +158,7 @@ tr.tot td.short{background:var(--bad-soft);color:var(--bad)}
 .alert .lvl{font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px;align-self:start;white-space:nowrap}
 .alert.irregular .lvl{background:var(--bad-soft);color:var(--bad)}
 .alert.atencao .lvl{background:var(--warn-soft);color:var(--warn)}
+.alert.nverif .lvl{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
 .alert.info .lvl{background:var(--info-soft);color:var(--info)}
 .alert .base{grid-column:2;font-size:.8rem;color:var(--muted)}
 table.res{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
@@ -468,7 +469,7 @@ function resultado(){
   const ctx=R.ctx, off=R.off, a=M.conferir(ctx, off);
   R.valido=a.valido;
   const dias=ctx.days.filter(x=>x.inMonth);
-  const nI=a.nIrregular, nA=a.alertas.filter(x=>x.nivel==='atencao').length;
+  const nI=a.nIrregular, nA=a.alertas.filter(x=>x.nivel==='atencao'||x.nivel==='nverif').length;
   const head=dias.map(x=>`<th class="${x.dw===0?'wk':''} ${x.dw===6?'sun':''}">${String(x.d.getUTCDate()).padStart(2,'0')}<span class="wd">${DOW[x.dw]}</span></th>`).join('');
   const rows=state.equipe.map((p,e)=>{
     const hor=M.jornada(p)?`${p.entrada}–${p.saida}`:'';
@@ -479,16 +480,17 @@ function resultado(){
   const pres=dias.map(x=>{ const n=x.aberto?a.cnt[x.i]:0; return `<td class="${x.dw===0?'wk':''} ${x.aberto && n<x.min?'short':''}">${n}</td>`; }).join('');
   const mins=dias.map(x=>`<td class="${x.dw===0?'wk':''}">${x.min}</td>`).join('');
   const res=M.resumo(ctx, off, a.lab);
-  const ordem={irregular:0, atencao:1, info:2};
-  const alertas=[...a.alertas].sort((x,y)=>ordem[x.nivel]-ordem[y.nivel]);
+  const alertas=[...a.alertas].sort((x,y)=>ordemNivel[x.nivel]-ordemNivel[y.nivel]);
   const bloqueio = a.valido ? '' : 'disabled title="Corrija as irregularidades para baixar"';
   return `<section class="panel">
     <div class="row between"><div class="head"><h2>Escala de ${nomeMes()}</h2><p class="muted">Clique numa célula para trocar trabalho e folga. As regras são conferidas de novo a cada mudança.</p></div>
       <div class="row"><button type="button" class="btn" data-act="pdf" ${bloqueio}>Baixar PDF</button><button type="button" class="btn primary" data-act="xlsx" ${bloqueio}>Baixar Excel</button></div></div>
-    ${a.valido ? '' : `<div class="note bad"><b>Escala inválida: ${nI} irregularidade${nI===1?'':'s'}.</b> Os downloads ficam bloqueados até corrigir. Desfaça as mudanças marcadas na grade ou use “Gerar outra versão”.</div>`}
+    ${a.valido ? '' : `<div class="note bad"><b>Escala inválida: ${nI} irregularidade${nI===1?'':'s'}.</b> Os downloads ficam bloqueados até corrigir. O gerador pode reorganizar as outras folgas mantendo as mudanças que você fez.
+      <div class="row" style="margin-top:10px"><button type="button" class="btn primary" data-act="corrigir">Corrigir automaticamente</button></div>
+      ${R.falhaCorrecao ? `<p class="small" style="margin-top:8px"><b>Não foi possível corrigir mantendo suas mudanças:</b> ${esc(R.falhaCorrecao.titulo)}. ${esc(R.falhaCorrecao.detalhes[0]||'')} Desfaça alguma das células marcadas.</p>` : ''}</div>`}
     <div class="summary-box">
       <div class="stat ${nI?'bad':'ok'}"><b>${nI}</b><span>irregularidade${nI===1?'':'s'}</span></div>
-      <div class="stat ${nA?'warn':'ok'}"><b>${nA}</b><span>ponto${nA===1?'':'s'} de atenção</span></div>
+      <div class="stat ${nA?'warn':'ok'}"><b>${nA}</b><span>ponto${nA===1?'':'s'} para conferir</span></div>
       <div class="stat"><b>${state.equipe.length}</b><span>pessoas</span></div>
       <div class="stat"><b>${dias.filter(x=>x.aberto).length}</b><span>dias abertos no mês</span></div>
     </div>
@@ -502,7 +504,7 @@ function resultado(){
   </section>
   <section class="panel"><div class="head"><h2>Conferência</h2><p class="muted">O que o gerador verificou nesta escala.</p></div>
     ${nI===0?'<div class="note ok"><b>Mínimo de pessoas, folgas semanais, domingos e dias seguidos conferidos.</b> Veja abaixo os pontos que dependem de você.</div>':''}
-    <div class="alerts">${alertas.map(x=>`<div class="alert ${x.nivel}"><span class="lvl">${x.nivel==='irregular'?'Irregular':x.nivel==='atencao'?'Atenção':'Informação'}</span><div><b>${esc(x.titulo)}</b><div class="small">${esc(x.texto)}</div></div><span class="base">${esc(x.base)}</span></div>`).join('')}</div>
+    <div class="alerts">${alertas.map(x=>`<div class="alert ${x.nivel}"><span class="lvl">${nomeNivel[x.nivel]}</span><div><b>${esc(x.titulo)}</b><div class="small">${esc(x.texto)}</div></div><span class="base">${esc(x.base)}</span></div>`).join('')}</div>
   </section>
   <section class="panel"><div class="head"><h2>Resumo por pessoa</h2></div>
     <div class="tablewrap" style="border:none"><table class="res"><thead><tr><th>Pessoa</th><th>Dias trabalhados</th><th>RSR</th><th>FER</th><th>FG</th><th>FC</th><th>Domingos trabalhados</th><th>Feriados trabalhados</th><th>Horas no mês</th></tr></thead>
@@ -570,6 +572,22 @@ function montar(){
   if(!state.dias.some(d=>d.aberto)){ toast('Marque pelo menos um dia de funcionamento.'); return; }
   gerar(); state.etapa=5; render(); window.scrollTo({top:0});
 }
+function corrigir(){
+  const R=state.resultado; if(!R || !R.ok) return;
+  const travas={};
+  state.equipe.forEach((p,e)=>{ for(const i of R.edit[e]){ (travas[p.nome] ||= {})[R.ctx.days[i].k]=!!R.off[e][i]; } });
+  let ultimo=null;
+  for(let k=0;k<20;k++){
+    const r=M.gerarEscala({...cfgAtual(), travas, seed:state.seed+k});
+    if(r.ok && M.conferir(r.ctx, r.off).valido){
+      state.seed+=k; state.resultado={...r, edit:R.edit};
+      render(); toast('Escala corrigida. Suas mudanças foram mantidas e as regras conferidas de novo.'); return;
+    }
+    ultimo=r;
+  }
+  R.falhaCorrecao = (ultimo && ultimo.motivo) || {titulo:'nenhuma combinação válida encontrada', detalhes:[]};
+  render(); toast('Não foi possível corrigir mantendo suas mudanças.');
+}
 function continuar(){
   const R=state.resultado; if(!R || !R.ok || !R.valido) return;
   const h=M.historicoDe(R.ctx, R.off);
@@ -598,6 +616,7 @@ app.addEventListener('click', ev=>{
     else if(act==='remfer'){ state.feriados.splice(Number(b.dataset.k),1); render(); }
     else if(act==='outra'){ state.seed++; gerar(); render(); toast(state.resultado.ok?'Nova versão gerada.':'Não há escala válida com estes dados.'); }
     else if(act==='continuar') continuar();
+    else if(act==='corrigir') corrigir();
     else if(act==='semhist'){ state.historico=null; render(); toast('O mês anterior não será considerado.'); }
     else if(act==='home'){ salvarAtual(); state.etapa=0; state.novaAberta=false; render(); window.scrollTo({top:0}); }
     else if(act==='nova'){ if(banco.escalas.length){ state.novaAberta=true; render(); } else { novaEscala('exemplo'); render(); } }
@@ -617,7 +636,7 @@ app.addEventListener('click', ev=>{
 app.addEventListener('keydown', ev=>{ const cell=ev.target.closest('td.cell'); if(cell && (ev.key==='Enter'||ev.key===' ') && !cell.classList.contains('locked')){ ev.preventDefault(); alternar(cell); } });
 function alternar(cell){
   const R=state.resultado, e=Number(cell.dataset.e), i=Number(cell.dataset.i);
-  R.off[e][i]=!R.off[e][i];
+  R.off[e][i]=!R.off[e][i]; R.falhaCorrecao=null;
   if(R.edit[e].has(i)) R.edit[e].delete(i); else R.edit[e].add(i);
   const y=window.scrollY, tw=document.querySelector('.tablewrap'), sx=tw?tw.scrollLeft:0;
   render();
@@ -712,7 +731,7 @@ const COR = {T:[220,240,227], RSR:[232,236,238], FG:[227,235,245], FER:[251,231,
 const TXT = {T:[20,92,53], RSR:[85,100,107], FG:[59,88,120], FER:[122,75,0], FE:[90,47,140], FC:[21,94,102]};
 const LEGENDA = 'T trabalho · RSR repouso semanal · FER feriado sem trabalho · FG folga da escala · FE trabalho em feriado · FC folga compensatória';
 const celula = (p,c) => (c==='T'||c==='FE') ? `${c}\n${p.entrada}–${p.saida}` : c;
-const ordemNivel={irregular:0, atencao:1, info:2}, nomeNivel={irregular:'Irregular', atencao:'Atenção', info:'Informação'};
+const ordemNivel={irregular:0, atencao:1, nverif:2, info:3}, nomeNivel={irregular:'Irregular', atencao:'Atenção', nverif:'Não verificado', info:'Informação'};
 
 /* as fontes padrão do PDF não têm travessão nem aspas curvas */
 const pt = v => String(v).replace(/[–—]/g,'-').replace(/[“”]/g,'"');
