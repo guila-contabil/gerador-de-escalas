@@ -12,10 +12,10 @@
 </head>
 <body>
 <style>
-/* Layout: coluna única de assistente (4 etapas) que se abre numa grade larga no resultado. Tinta verde-pinho sobre papel frio. */
+/* Layout: coluna única de assistente (4 etapas) que se abre numa grade larga no resultado. Azul institucional da Constantino & Gilnei sobre papel frio. */
 :root{
-  --bg:#F3F6F5; --surface:#FFFFFF; --surface-2:#EAF0EE; --ink:#14302A; --muted:#566B65; --line:#D3DEDA;
-  --accent:#0E6656; --accent-ink:#FFFFFF; --accent-soft:#DCEFEA;
+  --bg:#F3F5F8; --surface:#FFFFFF; --surface-2:#E9EEF4; --ink:#0F2236; --muted:#5A6878; --line:#D3DBE5;
+  --accent:#0B4F8C; --accent-ink:#FFFFFF; --accent-soft:#DDE9F5; --logo-bg:#FFFFFF;
   --ok:#1D7745; --ok-soft:#DDF2E5; --warn:#9A5B00; --warn-soft:#FBEED3; --bad:#B0281F; --bad-soft:#FBE3E0; --info:#2F5C8A; --info-soft:#E2ECF7;
   --c-t:#DCF0E3; --c-t-ink:#145C35; --c-f:#E8ECEE; --c-f-ink:#55646B; --c-fer:#FBE7BE; --c-fer-ink:#7A4B00; --c-fe:#E7DAF6; --c-fe-ink:#5A2F8C;
   --c-fg:#E3EBF5; --c-fg-ink:#3B5878; --c-fc:#D4EEF0; --c-fc-ink:#155E66;
@@ -24,15 +24,15 @@
   --r:10px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0F1A18; --surface:#16231F; --surface-2:#1C2D29; --ink:#E4EEEA; --muted:#9DB2AC; --line:#2C3F3A;
-  --accent:#3FB59C; --accent-ink:#06201A; --accent-soft:#183A33;
+  --bg:#0D1520; --surface:#141E2B; --surface-2:#1B2838; --ink:#E6EDF5; --muted:#9AA9BA; --line:#2A394B;
+  --accent:#7FB2E8; --accent-ink:#071828; --accent-soft:#1A3150;
   --ok:#5CCB8A; --ok-soft:#173526; --warn:#E6B054; --warn-soft:#3A2D12; --bad:#F08A80; --bad-soft:#3F1D1A; --info:#8DB8E6; --info-soft:#1B2D41;
   --c-t:#1B3C2A; --c-t-ink:#9EE0B6; --c-f:#232F33; --c-f-ink:#A8B6BC; --c-fer:#43341A; --c-fer-ink:#F2C979; --c-fe:#33264A; --c-fe-ink:#D1B6F2;
   --c-fg:#1F2C3B; --c-fg-ink:#A9C2DF; --c-fc:#15363A; --c-fc-ink:#8ED9E0;
   color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0F1A18; --surface:#16231F; --surface-2:#1C2D29; --ink:#E4EEEA; --muted:#9DB2AC; --line:#2C3F3A;
-  --accent:#3FB59C; --accent-ink:#06201A; --accent-soft:#183A33;
+  --bg:#0D1520; --surface:#141E2B; --surface-2:#1B2838; --ink:#E6EDF5; --muted:#9AA9BA; --line:#2A394B;
+  --accent:#7FB2E8; --accent-ink:#071828; --accent-soft:#1A3150;
   --ok:#5CCB8A; --ok-soft:#173526; --warn:#E6B054; --warn-soft:#3A2D12; --bad:#F08A80; --bad-soft:#3F1D1A; --info:#8DB8E6; --info-soft:#1B2D41;
   --c-t:#1B3C2A; --c-t-ink:#9EE0B6; --c-f:#232F33; --c-f-ink:#A8B6BC; --c-fer:#43341A; --c-fer-ink:#F2C979; --c-fe:#33264A; --c-fe-ink:#D1B6F2;
   --c-fg:#1F2C3B; --c-fg-ink:#A9C2DF; --c-fc:#15363A; --c-fc-ink:#8ED9E0;
@@ -49,7 +49,16 @@ h3{font-size:1.05rem}
 p{margin:0}
 .muted{color:var(--muted)}
 .small{font-size:.875rem}
-header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:14px}
+header.top{display:flex;flex-direction:column;gap:14px;border-bottom:2px solid var(--accent);padding-bottom:14px}
+.marca{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.logo-chip{background:var(--logo-bg);border-radius:8px;padding:6px 10px;display:inline-flex;border:1px solid var(--line)}
+.logo-chip img{height:44px;width:auto;display:block}
+@media (max-width:480px){.logo-chip img{height:32px}}
+.salva{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px;border:1px solid var(--line);border-radius:var(--r)}
+.salva .what{display:flex;flex-direction:column;gap:2px;min-width:0}
+.salva .what b{font-size:1.02rem}
+.chip{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:99px;vertical-align:middle;margin-left:6px}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.bad{background:var(--bad-soft);color:var(--bad)} .chip.draft{background:var(--surface-2);color:var(--muted)}
 header.top .eyebrow{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700}
 header.top p{max-width:60ch}
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;list-style:none;padding:0;margin:0}
@@ -195,9 +204,82 @@ const state = {
   equipe: exemplo(), exemplo:true,
   dias: DOW.map((_,i)=>({aberto:true, min: i===6 ? 2 : 3})),
   grupoMin:{}, domModelo:'comercio', domN:3,
-  feriados:[], historico:null, resultado:null, seed:1
+  feriados:[], historico:null, resultado:null, seed:1,
+  id:null, empresa:'', novaAberta:false, confirmaExcluir:null
 };
 state.feriados = M.feriadosDoMes(state.ano, state.mes);
+
+/* ================= escalas salvas neste navegador ================= */
+const CHAVE='gerador-escalas:v1';
+let banco=(()=>{ try{ const s=localStorage.getItem(CHAVE); return s?JSON.parse(s):{escalas:[]}; }catch(_){ return null; } })();
+const podeSalvar = !!banco && Array.isArray(banco.escalas);
+if(!podeSalvar) banco={escalas:[]};
+function gravarBanco(){ if(!podeSalvar) return false; try{ localStorage.setItem(CHAVE, JSON.stringify(banco)); return true; }catch(_){ return false; } }
+const novoId = () => 'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const CAMPOS=['ano','mes','tipo','equipe','exemplo','dias','grupoMin','domModelo','domN','feriados','historico','seed','empresa'];
+const copia = o => JSON.parse(JSON.stringify(o));
+function registro(){
+  const R=state.resultado, dados={};
+  for(const k of CAMPOS) dados[k]=copia(state[k]);
+  return { id:state.id, atualizado:Date.now(), etapa:state.etapa, dados,
+    resultado: !R ? null : R.ok ? {ok:true, off:R.off, edit:R.edit.map(x=>[...x]), valido:!!R.valido} : {ok:false} };
+}
+function salvarAtual(){
+  if(!state.id || state.etapa===0) return;
+  if(state.exemplo && !state.resultado) return;   // não guarda a equipe de exemplo sem uso
+  const r=registro(), i=banco.escalas.findIndex(x=>x.id===r.id);
+  if(i>=0) banco.escalas[i]=r; else banco.escalas.push(r);
+  gravarBanco();
+}
+let tSalvar=null;
+function agendarSalvar(){ clearTimeout(tSalvar); tSalvar=setTimeout(salvarAtual, 300); }
+function padraoNovo(comExemplo){
+  return {tipo:'5x2', equipe: comExemplo?exemplo():[], exemplo:!!comExemplo, dias:DOW.map((_,i)=>({aberto:true, min:i===6?2:3})),
+    grupoMin:{}, domModelo:'comercio', domN:3, empresa:''};
+}
+function carregar(rec){
+  const d=copia(rec.dados);
+  for(const k of CAMPOS) if(k in d) state[k]=d[k];
+  uid=Math.max(uid, ...state.equipe.map(p=>Number(p.id)||0))+1;
+  state.id=rec.id; state.resultado=null; state.novaAberta=false; state.confirmaExcluir=null;
+  if(rec.resultado && rec.resultado.ok){
+    const ctx=M.contexto(cfgAtual()), off=rec.resultado.off;
+    const formaOk = Array.isArray(off) && off.length===state.equipe.length && off.every(r=>Array.isArray(r) && r.length===ctx.days.length);
+    if(formaOk) state.resultado={ok:true, ctx, off, edit:(rec.resultado.edit||[]).map(a=>new Set(a))};
+    else gerar();
+    state.etapa=5;
+  } else if(rec.resultado && !rec.resultado.ok){ gerar(); state.etapa=5; }
+  else state.etapa=Math.min(4, Math.max(1, rec.etapa||1));
+}
+const tituloEscala = d => `${d.empresa || 'Escala sem nome'} · ${MESES[d.mes]} de ${d.ano}`;
+function novaEscala(origem){   // origem: id de uma escala salva, 'zero' ou 'exemplo'
+  salvarAtual();
+  const base = banco.escalas.find(x=>x.id===origem);
+  state.id=novoId(); state.resultado=null; state.historico=null; state.seed=1; state.novaAberta=false; state.confirmaExcluir=null;
+  state.ano=proxMes.getFullYear(); state.mes=proxMes.getMonth(); state.feriados=M.feriadosDoMes(state.ano, state.mes);
+  if(base){
+    const d=copia(base.dados);
+    Object.assign(state, {tipo:d.tipo, equipe:d.equipe, exemplo:false, dias:d.dias, grupoMin:d.grupoMin, domModelo:d.domModelo, domN:d.domN, empresa:d.empresa});
+    uid=Math.max(uid, ...state.equipe.map(p=>Number(p.id)||0))+1;
+  } else Object.assign(state, padraoNovo(origem==='exemplo'));
+  if(!pode6x1()) state.tipo='5x2';
+  state.etapa=1;
+}
+function excluirEscala(id){
+  banco.escalas=banco.escalas.filter(x=>x.id!==id); gravarBanco();
+  if(state.id===id) state.id=null;
+  state.confirmaExcluir=null;
+}
+function duplicarEscala(id){
+  const rec=banco.escalas.find(x=>x.id===id); if(!rec) return;
+  const c=copia(rec); c.id=novoId(); c.atualizado=Date.now(); c.dados.empresa=(c.dados.empresa||'Escala')+' (cópia)';
+  banco.escalas.push(c); gravarBanco();
+}
+function proximoMesDe(id){
+  const rec=banco.escalas.find(x=>x.id===id); if(!rec) return;
+  carregar(rec);
+  if(state.resultado && state.resultado.ok){ state.resultado.valido=M.conferir(state.resultado.ctx, state.resultado.off).valido; continuar(); }
+}
 
 const cfgAtual = () => ({ano:state.ano, mes:state.mes, tipo:state.tipo, equipe:state.equipe, dias:state.dias, grupoMin:state.grupoMin,
   domModelo:state.domModelo, domN:state.domN, feriados:state.feriados, historico:state.historico, seed:state.seed});
@@ -211,6 +293,8 @@ const pode6x1 = () => (state.ano*12+state.mes) <= (2026*12+11);
 
 function cabecalho(){
   return `<header class="top">
+    <div class="marca"><span class="logo-chip"><img src="logo.png" alt="Constantino & Gilnei Contabilidade" width="640" height="140"></span>
+      ${state.etapa>0 ? '<button type="button" class="btn" data-act="home">Minhas escalas</button>' : ''}</div>
     <div><div class="eyebrow">Escala de trabalho · ${state.tipo==='5x2'?'5×2':'6×1'}</div>
     <h1>Monte a escala do mês</h1>
     <p class="muted">Informe como a empresa funciona. O gerador distribui as folgas, confere as regras e prepara o PDF e o Excel.</p></div>
@@ -238,6 +322,8 @@ function etapa1(){
   return `<section class="panel">
     <div class="head"><h2>Qual escala você quer montar?</h2><p class="muted">Escolha o mês e o tipo de escala.</p></div>
     ${cont}
+    <label class="f" for="f-empresa">Nome da empresa <span class="hint">Serve para encontrar esta escala depois em “Minhas escalas”.</span>
+      <input type="text" id="f-empresa" value="${esc(state.empresa)}" placeholder="Ex.: Pizzaria Bom Sabor"></label>
     <div class="grid g2">
       <label class="f" for="f-mes">Mês da escala<input type="month" id="f-mes" value="${ymVal()}"></label>
       <label class="f" for="f-tipo">Tipo de escala
@@ -424,11 +510,43 @@ function resultado(){
   </section>`;
 }
 
+function home(){
+  const lista=[...banco.escalas].sort((a,b)=>b.atualizado-a.atualizado);
+  const dt = t => { const d=new Date(t); return d.toLocaleDateString('pt-BR')+' às '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+  const status = r => !r.resultado ? '<span class="chip draft">Em preenchimento</span>'
+    : r.resultado.ok && r.resultado.valido ? '<span class="chip ok">Pronta</span>' : '<span class="chip bad">Precisa de ajuste</span>';
+  const nova = state.novaAberta && lista.length ? `<form id="f-nova" class="panel" style="padding:16px">
+      <h3>Nova escala</h3>
+      <label class="row" style="gap:8px"><input type="radio" name="origem" value="reaproveitar" checked> Reaproveitar a equipe, os horários e o funcionamento de:</label>
+      <select id="nova-base" aria-label="Escala de origem">${lista.map(r=>`<option value="${r.id}">${esc(tituloEscala(r.dados))}</option>`).join('')}</select>
+      <label class="row" style="gap:8px"><input type="radio" name="origem" value="zero"> Começar do zero</label>
+      <div class="row"><button type="submit" class="btn primary">Começar</button><button type="button" class="btn" data-act="cancelanova">Cancelar</button></div>
+    </form>` : '';
+  return `<section class="panel">
+    <div class="row between"><div class="head"><h2>Minhas escalas</h2><p class="muted">Escalas salvas neste navegador. Abra uma para editar ou monte uma nova.</p></div>
+      <button type="button" class="btn primary" data-act="nova">+ Nova escala</button></div>
+    ${podeSalvar ? '' : '<div class="note warn"><b>Este navegador não está permitindo salvar.</b> Pode ser uma janela anônima ou um bloqueio de dados do site. A ferramenta funciona, mas a escala se perde ao fechar a página.</div>'}
+    ${nova}
+    <div class="list">${lista.length ? lista.map(r=>`<div class="salva">
+        <div class="what"><b>${esc(tituloEscala(r.dados))} ${status(r)}</b>
+          <span class="small muted">${r.dados.equipe.length} pessoa${r.dados.equipe.length===1?'':'s'} · escala ${r.dados.tipo==='5x2'?'5×2':'6×1'} · salva em ${dt(r.atualizado)}</span></div>
+        <div class="row">${state.confirmaExcluir===r.id
+          ? `<span class="small">Excluir esta escala? Não dá para desfazer.</span><button type="button" class="btn danger" data-act="excluirok" data-id="${r.id}">Excluir</button><button type="button" class="btn" data-act="excluirnao">Cancelar</button>`
+          : `<button type="button" class="btn primary" data-act="abrir" data-id="${r.id}">Abrir</button>
+             ${r.resultado && r.resultado.ok && r.resultado.valido ? `<button type="button" class="btn" data-act="proximo" data-id="${r.id}">Montar o mês seguinte</button>` : ''}
+             <button type="button" class="btn" data-act="duplicarescala" data-id="${r.id}">Duplicar</button>
+             <button type="button" class="btn link danger" data-act="excluir" data-id="${r.id}">Excluir</button>`}</div>
+      </div>`).join('') : '<p class="muted">Nenhuma escala salva ainda.</p>'}</div>
+    <p class="small muted">As escalas ficam guardadas só neste aparelho e neste navegador. Nada é enviado à internet nem ao escritório. Se você limpar os dados do navegador, as escalas salvas serão apagadas.</p>
+  </section>`;
+}
+
 function render(){
   app.className = 'wrap'+(state.etapa===5?' wide':'');
-  const body = state.etapa===1?etapa1():state.etapa===2?etapa2():state.etapa===3?etapa3():state.etapa===4?etapa4():resultado();
-  app.innerHTML = cabecalho() + stepper() + body +
-    `<footer>Ferramenta de apoio. A escala não substitui a conferência do contrato, da convenção coletiva e da folha de pagamento. Nenhum dado é salvo: ao sair da página, as informações se perdem.</footer>`;
+  const body = state.etapa===0?home():state.etapa===1?etapa1():state.etapa===2?etapa2():state.etapa===3?etapa3():state.etapa===4?etapa4():resultado();
+  app.innerHTML = cabecalho() + (state.etapa===0 ? '' : stepper()) + body +
+    `<footer>Ferramenta de apoio da Constantino & Gilnei Contabilidade. A escala não substitui a conferência do contrato, da convenção coletiva e da folha de pagamento. ${podeSalvar ? 'As escalas ficam salvas automaticamente só neste navegador.' : 'Neste navegador as escalas não são salvas.'}</footer>`;
+  agendarSalvar();
 }
 
 /* ================= eventos ================= */
@@ -457,6 +575,8 @@ function continuar(){
   const h=M.historicoDe(R.ctx, R.off);
   h.rotulo=nomeMes();
   let y=state.ano, m=state.mes+1; if(m>11){m=0;y++;}
+  salvarAtual();
+  state.id=novoId(); state.seed=1;
   state.historico=h; state.ano=y; state.mes=m; state.feriados=M.feriadosDoMes(y,m);
   if(!pode6x1()) state.tipo='5x2';
   state.resultado=null; state.etapa=4; render(); window.scrollTo({top:0});
@@ -479,6 +599,15 @@ app.addEventListener('click', ev=>{
     else if(act==='outra'){ state.seed++; gerar(); render(); toast(state.resultado.ok?'Nova versão gerada.':'Não há escala válida com estes dados.'); }
     else if(act==='continuar') continuar();
     else if(act==='semhist'){ state.historico=null; render(); toast('O mês anterior não será considerado.'); }
+    else if(act==='home'){ salvarAtual(); state.etapa=0; state.novaAberta=false; render(); window.scrollTo({top:0}); }
+    else if(act==='nova'){ if(banco.escalas.length){ state.novaAberta=true; render(); } else { novaEscala('exemplo'); render(); } }
+    else if(act==='cancelanova'){ state.novaAberta=false; render(); }
+    else if(act==='abrir'){ const r=banco.escalas.find(x=>x.id===b.dataset.id); if(r){ carregar(r); render(); window.scrollTo({top:0}); } }
+    else if(act==='proximo'){ proximoMesDe(b.dataset.id); }
+    else if(act==='duplicarescala'){ duplicarEscala(b.dataset.id); render(); toast('Escala duplicada.'); }
+    else if(act==='excluir'){ state.confirmaExcluir=b.dataset.id; render(); }
+    else if(act==='excluirnao'){ state.confirmaExcluir=null; render(); }
+    else if(act==='excluirok'){ excluirEscala(b.dataset.id); render(); toast('Escala excluída.'); }
     else if(act==='pdf') baixarPDF();
     else if(act==='xlsx') baixarExcel();
     return;
@@ -503,11 +632,12 @@ app.addEventListener('input', ev=>{
     card.querySelector('[data-sum="nome"]').textContent=p.nome||'Sem nome';
     card.querySelector('[data-sum="res"]').textContent=resumoPessoa(p);
     card.querySelector('[data-sum="jor"]').textContent=resumoJornada(p);
-    state.exemplo=false; return;
+    state.exemplo=false; agendarSalvar(); return;
   }
-  if(t.dataset.min!==undefined){ state.dias[Number(t.dataset.min)].min=Math.max(0,Number(t.value)||0); return; }
-  if(t.dataset.gmin!==undefined){ state.grupoMin[t.dataset.gmin]=Math.max(0,Number(t.value)||0); return; }
-  if(t.id==='f-domn'){ state.domN=Math.max(1,Number(t.value)||1); return; }
+  if(t.dataset.min!==undefined){ state.dias[Number(t.dataset.min)].min=Math.max(0,Number(t.value)||0); agendarSalvar(); return; }
+  if(t.dataset.gmin!==undefined){ state.grupoMin[t.dataset.gmin]=Math.max(0,Number(t.value)||0); agendarSalvar(); return; }
+  if(t.id==='f-domn'){ state.domN=Math.max(1,Number(t.value)||1); agendarSalvar(); return; }
+  if(t.id==='f-empresa'){ state.empresa=t.value; agendarSalvar(); return; }
 });
 app.addEventListener('change', ev=>{
   const t=ev.target;
@@ -522,6 +652,11 @@ app.addEventListener('change', ev=>{
 });
 app.addEventListener('submit', ev=>{
   ev.preventDefault();
+  if(ev.target.id==='f-nova'){
+    const origem=ev.target.querySelector('input[name=origem]:checked').value;
+    novaEscala(origem==='zero' ? 'zero' : document.getElementById('nova-base').value);
+    render(); window.scrollTo({top:0}); return;
+  }
   if(ev.target.id==='f-add'){
     const nome=document.getElementById('n-nome').value.trim(); if(!nome) return;
     if(state.exemplo){ state.equipe=[]; state.exemplo=false; state.grupoMin={}; }
@@ -558,7 +693,16 @@ function dadosExport(){
   if(!a.valido){ toast('A escala tem irregularidades. Corrija antes de baixar.'); return null; }
   return {ctx:R.ctx, off:R.off, a, res:M.resumo(R.ctx, R.off, a.lab)};
 }
-const nomeArquivo = ext => `escala-${state.tipo}-${ymVal()}.${ext}`;
+const slug = t => String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase();
+const nomeArquivo = ext => `escala-${state.empresa?slug(state.empresa)+'-':''}${ymVal()}.${ext}`;
+const tituloExport = () => `Escala ${state.tipo==='5x2'?'5×2':'6×1'}${state.empresa?' · '+state.empresa:''} · ${nomeMes()}`;
+let _logo=null;
+async function logoDataURL(){
+  if(_logo!==null) return _logo;
+  try{ const b=await (await fetch('logo.png')).blob(); _logo=await new Promise((ok,er)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=er; r.readAsDataURL(b); }); }
+  catch(_){ _logo=''; }
+  return _logo;
+}
 function semanasDoMes(ctx){
   const dias=ctx.days.filter(x=>x.inMonth), out=[]; let cur=[];
   dias.forEach(x=>{ if(x.dw===0 && cur.length){ out.push(cur); cur=[]; } cur.push(x); });
@@ -582,10 +726,11 @@ async function baixarPDF(){
   doc.autoTable=o=>_at({...o, head:o.head&&ptRows(o.head), body:ptRows(o.body)});
   const _tx=doc.text.bind(doc);
   doc.text=(s,...r)=>_tx(pt(s),...r);
-  const titulo=`Escala ${state.tipo==='5x2'?'5×2':'6×1'} · ${nomeMes()}`;
+  const titulo=tituloExport(), logo=await logoDataURL();
   semanasDoMes(ctx).forEach((sem,si)=>{
     if(si>0) doc.addPage();
-    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,48,42); doc.text(titulo, 14, 15);
+    if(logo) doc.addImage(logo, 'PNG', 229, 8, 54, 11.8, 'logo-cg', 'FAST');
+    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(15,34,54); doc.text(titulo, 14, 15);
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(86,107,101);
     doc.text(`${br(sem[0].d)} a ${br(sem[sem.length-1].d)} · ${LEGENDA}`, 14, 21);
     const head=[['Pessoa', ...sem.map(x=>`${ddmm(x.d)}\n${DOW_LONG[x.dw]}`)]];
@@ -593,7 +738,7 @@ async function baixarPDF(){
     body.push(['Presentes', ...sem.map(x=>String(x.aberto?a.cnt[x.i]:0))]);
     body.push(['Mínimo', ...sem.map(x=>String(x.min))]);
     doc.autoTable({head, body, startY:26, theme:'grid', styles:{fontSize:8, cellPadding:2, valign:'middle', lineColor:[211,222,218], lineWidth:0.2},
-      headStyles:{fillColor:[14,102,86], textColor:255, fontStyle:'bold'}, columnStyles:{0:{cellWidth:48}},
+      headStyles:{fillColor:[11,79,140], textColor:255, fontStyle:'bold'}, columnStyles:{0:{cellWidth:48}},
       didParseCell:d=>{
         if(d.section!=='body') return;
         if(d.row.index>=state.equipe.length){ d.cell.styles.fontStyle='bold'; d.cell.styles.fillColor=[234,240,238]; return; }
@@ -604,16 +749,17 @@ async function baixarPDF(){
     doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${si+1}`, 283, 203, {align:'right'});
   });
   doc.addPage();
-  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(20,48,42); doc.text('Resumo e conferência', 14, 15);
-  doc.autoTable({startY:20, theme:'grid', styles:{fontSize:8.5, cellPadding:2}, headStyles:{fillColor:[14,102,86]},
+  if(logo) doc.addImage(logo, 'PNG', 229, 8, 54, 11.8, 'logo-cg', 'FAST');
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(15,34,54); doc.text('Resumo e conferência', 14, 15);
+  doc.autoTable({startY:20, theme:'grid', styles:{fontSize:8.5, cellPadding:2}, headStyles:{fillColor:[11,79,140]},
     head:[['Pessoa','Dias trabalhados','RSR','FER','FG','FC','Domingos trabalhados','Feriados trabalhados','Horas no mês']],
     body:res.map(r=>[r.p.nome, r.trab, r.RSR, r.FER, r.FG, r.FC, r.dom, r.FE, fmtH(r.horas)])});
-  doc.autoTable({startY:doc.lastAutoTable.finalY+8, theme:'grid', styles:{fontSize:8, cellPadding:2}, headStyles:{fillColor:[14,102,86]},
+  doc.autoTable({startY:doc.lastAutoTable.finalY+8, theme:'grid', styles:{fontSize:8, cellPadding:2}, headStyles:{fillColor:[11,79,140]},
     columnStyles:{0:{cellWidth:24}, 3:{cellWidth:60}},
     head:[['Nível','Item','Detalhe','Base']],
     body:[...a.alertas].sort((x,y)=>ordemNivel[x.nivel]-ordemNivel[y.nivel]).map(x=>[nomeNivel[x.nivel], x.titulo, x.texto, x.base])});
   doc.setFontSize(8); doc.setTextColor(120);
-  doc.text('Ferramenta de apoio. Confira contrato, convenção coletiva e folha de pagamento antes de usar.', 14, 203);
+  doc.text('Gerado com o Gerador de Escalas da Constantino & Gilnei Contabilidade. Ferramenta de apoio: confira contrato, convenção coletiva e folha de pagamento antes de usar.', 14, 203);
   await salvar(nomeArquivo('pdf'), doc.output('arraybuffer'));
 }
 
@@ -625,10 +771,10 @@ async function baixarExcel(){
   const ws=wb.addWorksheet('Escala', {views:[{state:'frozen', xSplit:3, ySplit:2}]});
   const dias=ctx.days.filter(x=>x.inMonth);
   const argb = rgb => 'FF'+rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
-  const cab = c => { c.font={bold:true, color:{argb:'FFFFFFFF'}}; c.fill={type:'pattern', pattern:'solid', fgColor:{argb:'FF0E6656'}}; c.alignment={horizontal:'center', vertical:'middle', wrapText:true}; };
-  ws.addRow([`Escala ${state.tipo==='5x2'?'5×2':'6×1'} · ${nomeMes()}`]);
+  const cab = c => { c.font={bold:true, color:{argb:'FFFFFFFF'}}; c.fill={type:'pattern', pattern:'solid', fgColor:{argb:'FF0B4F8C'}}; c.alignment={horizontal:'center', vertical:'middle', wrapText:true}; };
+  ws.addRow([tituloExport()]);
   ws.mergeCells(1,1,1,3+dias.length);
-  ws.getRow(1).font={bold:true, size:14, color:{argb:'FF14302A'}};
+  ws.getRow(1).font={bold:true, size:14, color:{argb:'FF0F2236'}};
   ws.addRow(['Pessoa','Cargo','Grupo', ...dias.map(x=>`${ddmm(x.d)}\n${DOW[x.dw]}`)]);
   ws.getRow(2).height=30; ws.getRow(2).eachCell(cab);
   state.equipe.forEach((p,e)=>{
@@ -657,12 +803,15 @@ async function baixarExcel(){
   [...a.alertas].sort((x,y)=>ordemNivel[x.nivel]-ordemNivel[y.nivel]).forEach(x=>{ const r=wa.addRow([nomeNivel[x.nivel], x.titulo, x.texto, x.base]); r.alignment={wrapText:true, vertical:'top'}; });
   wa.getRow(1).eachCell(cab);
   wa.getColumn(1).width=12; wa.getColumn(2).width=50; wa.getColumn(3).width=70; wa.getColumn(4).width=40;
-  wa.addRow([]); wa.addRow(['Ferramenta de apoio. Confira contrato, convenção coletiva e folha de pagamento antes de usar.']);
+  wa.addRow([]); wa.addRow(['Gerado com o Gerador de Escalas da Constantino & Gilnei Contabilidade. Ferramenta de apoio: confira contrato, convenção coletiva e folha de pagamento antes de usar.']);
 
   const buf=await wb.xlsx.writeBuffer();
   await salvar(nomeArquivo('xlsx'), buf);
 }
 
+if(podeSalvar && banco.escalas.length){ state.etapa=0; }
+else { state.id=novoId(); }
+window.addEventListener('pagehide', salvarAtual);
 render();
 </script>
 </body>
