@@ -147,7 +147,19 @@
     }
     const grupoDe = cfg.equipe.map(p => String(p.grupo || "").trim());
     const gmin = {};
-    for (const g of new Set(grupoDe.filter(Boolean))) { const v = Number((cfg.grupoMin || {})[g]) || 0; if (v > 0) gmin[g] = v; }
+    const gruposPrincipais = new Set(grupoDe.filter(Boolean));
+    for (const g of gruposPrincipais) { const v = Number((cfg.grupoMin || {})[g]) || 0; if (v > 0) gmin[g] = v; }
+    // máximo por área (preferência) e funções que cada pessoa também pode exercer
+    const gmax = {};
+    for (const g of gruposPrincipais) { const v = Number((cfg.grupoMax || {})[g]); if (v > 0) gmax[g] = v; }
+    const capaz = cfg.equipe.map((p, e) => {
+      const c = new Set(grupoDe[e] ? [grupoDe[e]] : []);
+      for (const x of (p.funcoesExtras || [])) { const t = String(x).trim(); if (t && gruposPrincipais.has(t)) c.add(t); }
+      return [...c];
+    });
+    const cobertos = new Set();
+    capaz.forEach((c, e) => c.forEach(g => { if (g !== grupoDe[e]) cobertos.add(g); }));
+    const multi = cobertos.size > 0 || Object.keys(gmax).length > 0;
 
     // continuidade: dias já definidos no mês anterior (J24)
     const hist = cfg.historico || null;
@@ -173,7 +185,7 @@
       for (const k of antes) if (dowOf(fromIso(k)) === 6) streak0[e] = h[k] ? 0 : streak0[e] + 1;
       for (let d = addDays(start, -1); ; d = addDays(d, -1)) { const k = iso(d); if (!(k in h) || h[k]) break; run0[e]++; }
     });
-    return { cfg, days, weeks, grupoDe, gmin, first, last, start, end, fixed, travado, fixo, streak0, run0, temHistorico, E };
+    return { cfg, days, weeks, grupoDe, gmin, gmax, capaz, cobertos, multi, first, last, start, end, fixed, travado, fixo, streak0, run0, temHistorico, E };
   }
 
   /* ============ números aleatórios com semente ============ */
@@ -216,6 +228,36 @@
     }
   }
 
+  /* ============ funções do dia (área principal ou outra que a pessoa também exerce) ============
+   * Fluxo de custo mínimo: primeiro completa os mínimos de cada área, prefere a área principal
+   * e respeita o máximo quando houver outra função possível. */
+  function atribuirDia(ctx, trab) {
+    const { gmin, gmax, capaz, grupoDe } = ctx;
+    const grupos = [...new Set([...Object.keys(gmin), ...Object.keys(gmax), ...trab.flatMap(e => capaz[e])])];
+    const F = new Fluxo(), S = F.no(), T = F.no(), nG = {}, n = trab.length;
+    for (const g of grupos) {
+      nG[g] = F.no();
+      const mn = gmin[g] || 0, mx = gmax[g];
+      if (mn) F.aresta(nG[g], T, mn, -1000);
+      if (mx == null) F.aresta(nG[g], T, n, 0);
+      else { if (mx > mn) F.aresta(nG[g], T, mx - mn, 0); F.aresta(nG[g], T, n, 100); }
+    }
+    const ligacoes = [];
+    for (const e of trab) {
+      const ne = F.no(); F.aresta(S, ne, 1, 0);
+      if (!grupoDe[e]) F.aresta(ne, T, 1, 5);                 // sem área principal: pode ficar sem função específica
+      for (const g of capaz[e]) ligacoes.push([e, g, F.aresta(ne, nG[g], 1, g === grupoDe[e] ? 0 : 10)]);
+    }
+    F.rodar(S, T, n);
+    const funcao = {}, contagem = {}, faltas = {}, excesso = {};
+    for (const g of grupos) contagem[g] = 0;
+    for (const [e, g, a] of ligacoes) if (a.cap === 0) { funcao[e] = g; contagem[g]++; }
+    for (const g of Object.keys(gmin)) faltas[g] = Math.max(0, gmin[g] - contagem[g]);
+    for (const g of Object.keys(gmax)) excesso[g] = Math.max(0, contagem[g] - gmax[g]);
+    return { funcao, contagem, faltas, excesso };
+  }
+  const faltasTotal = a => Object.values(a.faltas).reduce((t, v) => t + v, 0);
+
   /* ============ fase 1: folgas de domingo no mês inteiro ============ */
   function* planosDomingo(ctx, rnd, falhas, orcamento) {
     const { cfg, days, E, gmin, grupoDe } = ctx;
@@ -225,7 +267,9 @@
     const ff = cfg.equipe.map(p => (p.folgaFixa === "" || p.folgaFixa == null) ? -1 : Number(p.folgaFixa));
     const streak = ctx.streak0.slice();
     const plano = cfg.equipe.map(() => new Array(S.length).fill(false));
-    const gruposOk = folga => Object.keys(gmin).every(g => grupoDe.filter((gg, e) => gg === g && !folga.has(e)).length >= gmin[g]);
+    const gruposOk = folga => ctx.multi
+      ? faltasTotal(atribuirDia(ctx, [...Array(E).keys()].filter(e => !folga.has(e)))) === 0
+      : Object.keys(gmin).every(g => grupoDe.filter((gg, e) => gg === g && !folga.has(e)).length >= gmin[g]);
     let nos = 0;
 
     function* combos(lista, tam) {
@@ -297,12 +341,64 @@
 
   /* ============ fase 2: demais folgas, semana a semana, com cobertura obrigatória ============ */
   function contar(ctx, off) {
-    const { days, E, gmin, grupoDe } = ctx;
-    const cnt = new Array(days.length).fill(0), g = {};
-    for (const k in gmin) g[k] = new Array(days.length).fill(0);
+    const { days, E, gmin, gmax, grupoDe } = ctx;
+    const cnt = new Array(days.length).fill(0), g = {}, gp = {};
+    for (const k in gmin) { g[k] = new Array(days.length).fill(0); gp[k] = new Array(days.length).fill(0); }
     for (let e = 0; e < E; e++) for (let i = 0; i < days.length; i++)
-      if (days[i].aberto && !off[e][i]) { cnt[i]++; if (g[grupoDe[e]]) g[grupoDe[e]][i]++; }
-    return { cnt, g };
+      if (days[i].aberto && !off[e][i]) { cnt[i]++; if (gp[grupoDe[e]]) gp[grupoDe[e]][i]++; }
+    if (!ctx.multi) { for (const k in gp) g[k] = gp[k].slice(); return { cnt, g, gp, funcao: null, excesso: null }; }
+    const funcao = [...Array(E)].map(() => new Array(days.length).fill(null));
+    const excesso = {}; for (const k in gmax) excesso[k] = new Array(days.length).fill(0);
+    for (let i = 0; i < days.length; i++) {
+      if (!days[i].aberto) continue;
+      const a = atribuirDia(ctx, [...Array(E).keys()].filter(e => !off[e][i]));
+      for (const k in gmin) g[k][i] = a.contagem[k] || 0;
+      for (const k in gmax) excesso[k][i] = a.excesso[k] || 0;
+      for (const e in a.funcao) funcao[e][i] = a.funcao[e];
+    }
+    return { cnt, g, gp, funcao, excesso };
+  }
+
+  /* sequência de dias trabalhados até o dia "ate" não passa de 6 (OJ 410) */
+  function seguidosAte(ctx, off, e, ate) {
+    let run = ctx.run0[e];
+    for (let i = 0; i <= ate; i++) { if (!ctx.days[i].aberto || off[e][i]) run = 0; else if (++run > MAX_DIAS_SEGUIDOS) return false; }
+    return true;
+  }
+
+  /* com funções extras, a cobertura por área é conferida dia a dia e as folgas são trocadas
+   * dentro da semana até todos os mínimos fecharem */
+  function repararAreas(ctx, off, w, inicio) {
+    const { days, E, gmin } = ctx, fixed = ctx.fixo, dom = w.i0 + 6;
+    const idx = [...Array(7)].map((_, k) => w.i0 + k);
+    const falta = i => {
+      if (!days[i].aberto) return 0;
+      const trab = [...Array(E).keys()].filter(e => !off[e][i]);
+      if (trab.length < days[i].min) return 999;
+      return faltasTotal(atribuirDia(ctx, trab));
+    };
+    for (let passo = 0; passo < 6; passo++) {
+      const ruins = idx.filter(i => i !== dom && falta(i) > 0);
+      if (!ruins.length) break;
+      let melhorou = false;
+      for (const i of ruins) for (let e = 0; e < E && falta(i) > 0; e++) {
+        if (!off[e][i] || inicio[e][i]) continue;
+        for (const j of idx) {
+          if (j === i || j === dom || off[e][j] || !days[j].aberto || fixed[e][j] !== null) continue;
+          const antes = falta(i) + falta(j);
+          off[e][i] = false; off[e][j] = true;
+          if (falta(i) + falta(j) < antes && seguidosAte(ctx, off, e, w.i0 + 6)) { melhorou = true; break; }
+          off[e][i] = true; off[e][j] = false;
+        }
+      }
+      if (!melhorou) break;
+    }
+    const i = idx.find(i => falta(i) > 0);
+    if (i === undefined) return { ok: true };
+    const trab = [...Array(E).keys()].filter(e => !off[e][i]);
+    if (trab.length < days[i].min) return { ok: false, falha: { tipo: "dia", i, disp: trab.length, min: days[i].min } };
+    const a = atribuirDia(ctx, trab), g = Object.keys(gmin).find(k => a.faltas[k] > 0);
+    return { ok: false, falha: { tipo: "dia", i, grupo: g, disp: a.contagem[g] || 0, min: gmin[g] } };
   }
 
   function semana(ctx, off, w, ultimaFolga, pendFC, rnd) {
@@ -323,7 +419,10 @@
       dia[i] = F.no();
       const capD = c.cnt[i] - days[i].min;
       for (let u = 0; u < capD; u++) F.aresta(dia[i], T, 1, 4 * u);
-      for (const g in gmin) { porta[g + "|" + i] = F.no(); F.aresta(porta[g + "|" + i], dia[i], c.g[g][i] - gmin[g], 0); }
+      for (const g in gmin) {
+        if (ctx.multi && ctx.cobertos.has(g)) continue;   // área coberta também por outras funções: conferida depois, dia a dia
+        porta[g + "|" + i] = F.no(); F.aresta(porta[g + "|" + i], dia[i], Math.max(0, c.gp[g][i] - gmin[g]), 0);
+      }
     }
     const candidatos = e => idx.filter(i => i !== dom && days[i].aberto && !off[e][i] && fixed[e][i] === null);
     let demanda = 0;
@@ -402,6 +501,10 @@
         proxPend[e] = Math.max(0, feAgora[e] - (novos - usadosAnt));
       }
     } else for (let e = 0; e < E; e++) proxPend[e] = feAgora[e];
+    if (ctx.multi) {
+      const r = repararAreas(ctx, off, w, inicio);
+      if (!r.ok) return r;
+    }
     return { ok: true, proxPend };
   }
 
@@ -573,6 +676,21 @@
       if (fg.length) add("irregular", `Grupo "${g}" abaixo do mínimo`, fg.join("; ") + ".", "Cobertura mínima informada pela empresa");
     }
 
+    // máximo por área (preferência): avisa quando não foi possível remanejar
+    if (c.excesso) for (const g in c.excesso) {
+      const dias = []; days.forEach((x, i) => { if (x.inMonth && c.excesso[g][i] > 0) dias.push(`${ddmm(x.d)} (${(c.g[g] ? c.g[g][i] : ctx.gmax[g] + c.excesso[g][i])} pessoas)`); });
+      if (dias.length) add("atencao", `Área "${g}" acima do máximo de ${ctx.gmax[g]}`,
+        `${dias.join("; ")}. Ninguém dessa área pode trabalhar em outra função nesses dias. Marque “Também pode trabalhar como” no cadastro ou aceite o excesso.`, "Regra da empresa");
+    }
+    // desvio ou acúmulo de função
+    if (c.funcao) for (let e = 0; e < E; e++) {
+      const fora = {}; days.forEach((x, i) => { const f = c.funcao[e][i]; if (x.inMonth && f && f !== grupoDe[e]) fora[f] = (fora[f] || 0) + 1; });
+      const lista = Object.entries(fora);
+      if (lista.length) add("atencao", `${nome(e)}: trabalha em outra função`,
+        `${lista.map(([f, n]) => `${n} dia${n === 1 ? "" : "s"} como ${f}`).join("; ")}${grupoDe[e] ? ` (função principal: ${grupoDe[e]})` : ""}. Exercer outra função com habitualidade pode caracterizar desvio ou acúmulo de função, com risco de diferença salarial. Confira o contrato e a convenção coletiva.`,
+        "CLT, art. 456, parágrafo único; art. 468");
+    }
+
     for (let e = 0; e < E; e++) {
       const p = cfg.equipe[e];
       // repouso semanal: conta folgas, menos as compensatórias
@@ -670,7 +788,7 @@
     else add("info", "Mês anterior não informado", "As semanas que começam no mês anterior foram completadas por projeção. Para conferir a virada do mês, gere o mês anterior e use “Continuar no mês seguinte”.", "—");
 
     const nIrregular = al.filter(a => a.nivel === "irregular").length;
-    return { alertas: al, valido: nIrregular === 0, nIrregular, cnt: c.cnt, gcnt: c.g, lab, dobras };
+    return { alertas: al, valido: nIrregular === 0, nIrregular, cnt: c.cnt, gcnt: c.g, funcao: c.funcao, lab, dobras };
   }
 
   /* ============ resumo e continuidade ============ */
@@ -712,7 +830,7 @@
     DOW, VIG_2F, VIG_40, ud, addDays, iso, dowOf, ddmm, br, fromIso, toMin, fmtH,
     pascoa, feriadosDoAno, feriadosDoMes, folgasSemana, regimeAntigo, limiteSemanal, janelaDomingo, baseDomingo,
     jornada, contexto, contar, gerarEscala, rotular, conferir, resumo, historicoDe, rng32, sequenciasLongas, MAX_DIAS_SEGUIDOS,
-    PERIODOS_JORNADA, periodoJornada, limitesJornada, horasExtras, folgasMinimas,
+    PERIODOS_JORNADA, periodoJornada, limitesJornada, horasExtras, folgasMinimas, atribuirDia,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = Motor;
   else root.Motor = Motor;

@@ -148,6 +148,7 @@ table.esc .wk{border-left:2px solid var(--ink)}
 td.cell{cursor:pointer;height:40px;font-weight:700;user-select:none}
 td.cell.locked{cursor:default}
 td.cell small{display:block;font-weight:400;font-size:.62rem;opacity:.85}
+td.cell small.outra{font-weight:700;opacity:1;text-decoration:underline;text-underline-offset:2px}
 .c-T{background:var(--c-t);color:var(--c-t-ink)}
 .c-F{background:var(--c-f);color:var(--c-f-ink)}
 .c-FER{background:var(--c-fer);color:var(--c-fer-ink)}
@@ -200,7 +201,7 @@ const NOME_COD = {T:'Trabalho', FE:'Trabalho em feriado', RSR:'Repouso semanal',
 
 /* ================= estado ================= */
 let uid = 1;
-const pessoa = (o={}) => ({id:uid++, nome:'', cargo:'', sexo:'F', entrada:'08:00', saida:'17:00', intIni:'12:00', intFim:'13:00', grupo:'', folgaFixa:'', ...o});
+const pessoa = (o={}) => ({id:uid++, nome:'', cargo:'', sexo:'F', entrada:'08:00', saida:'17:00', intIni:'12:00', intFim:'13:00', grupo:'', folgaFixa:'', funcoesExtras:[], ...o});
 function exemplo(){
   return [
     pessoa({nome:'Bruna Teixeira', cargo:'Atendente', sexo:'F', entrada:'08:00', saida:'14:15', intIni:'11:00', intFim:'11:15', grupo:'Atendimento'}),
@@ -216,7 +217,7 @@ const state = {
   etapa:1, ano:proxMes.getFullYear(), mes:proxMes.getMonth(), tipo:'5x2',
   equipe: exemplo(), exemplo:true,
   dias: DOW.map((_,i)=>({aberto:true, min: i===6 ? 2 : 3})),
-  grupoMin:{}, domModelo:'comercio', domN:3, normaColetiva:{situacao:'nao_sei', diario:'08:00', semanal:''},
+  grupoMin:{}, grupoMax:{}, domModelo:'comercio', domN:3, normaColetiva:{situacao:'nao_sei', diario:'08:00', semanal:''},
   feriados:[], historico:null, resultado:null, seed:1,
   id:null, empresa:'', novaAberta:false, confirmaExcluir:null
 };
@@ -229,7 +230,7 @@ const podeSalvar = !!banco && Array.isArray(banco.escalas);
 if(!podeSalvar) banco={escalas:[]};
 function gravarBanco(){ if(!podeSalvar) return false; try{ localStorage.setItem(CHAVE, JSON.stringify(banco)); return true; }catch(_){ return false; } }
 const novoId = () => 'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-const CAMPOS=['ano','mes','tipo','equipe','exemplo','dias','grupoMin','domModelo','domN','normaColetiva','feriados','historico','seed','empresa'];
+const CAMPOS=['ano','mes','tipo','equipe','exemplo','dias','grupoMin','grupoMax','domModelo','domN','normaColetiva','feriados','historico','seed','empresa'];
 const copia = o => JSON.parse(JSON.stringify(o));
 function registro(){
   const R=state.resultado, dados={};
@@ -248,12 +249,13 @@ let tSalvar=null;
 function agendarSalvar(){ clearTimeout(tSalvar); tSalvar=setTimeout(salvarAtual, 300); }
 function padraoNovo(comExemplo){
   return {tipo:'5x2', equipe: comExemplo?exemplo():[], exemplo:!!comExemplo, dias:DOW.map((_,i)=>({aberto:true, min:i===6?2:3})),
-    grupoMin:{}, domModelo:'comercio', domN:3, normaColetiva:{situacao:'nao_sei', diario:'08:00', semanal:''}, empresa:''};
+    grupoMin:{}, grupoMax:{}, domModelo:'comercio', domN:3, normaColetiva:{situacao:'nao_sei', diario:'08:00', semanal:''}, empresa:''};
 }
 function carregar(rec){
   const d=copia(rec.dados);
   for(const k of CAMPOS) if(k in d) state[k]=d[k];
   if(!state.normaColetiva) state.normaColetiva={situacao:'nao_sei', diario:'08:00', semanal:''};
+  if(!state.grupoMax) state.grupoMax={};
   uid=Math.max(uid, ...state.equipe.map(p=>Number(p.id)||0))+1;
   state.id=rec.id; state.resultado=null; state.novaAberta=false; state.confirmaExcluir=null;
   if(rec.resultado && rec.resultado.ok){
@@ -273,7 +275,7 @@ function novaEscala(origem){   // origem: id de uma escala salva, 'zero' ou 'exe
   state.ano=proxMes.getFullYear(); state.mes=proxMes.getMonth(); state.feriados=M.feriadosDoMes(state.ano, state.mes);
   if(base){
     const d=copia(base.dados);
-    Object.assign(state, {tipo:d.tipo, equipe:d.equipe, exemplo:false, dias:d.dias, grupoMin:d.grupoMin, domModelo:d.domModelo, domN:d.domN, normaColetiva:d.normaColetiva||{situacao:'nao_sei', diario:'08:00', semanal:''}, empresa:d.empresa});
+    Object.assign(state, {tipo:d.tipo, equipe:d.equipe, exemplo:false, dias:d.dias, grupoMin:d.grupoMin, grupoMax:d.grupoMax||{}, domModelo:d.domModelo, domN:d.domN, normaColetiva:d.normaColetiva||{situacao:'nao_sei', diario:'08:00', semanal:''}, empresa:d.empresa});
     uid=Math.max(uid, ...state.equipe.map(p=>Number(p.id)||0))+1;
   } else Object.assign(state, padraoNovo(origem==='exemplo'));
   if(!pode6x1()) state.tipo='5x2';
@@ -295,7 +297,7 @@ function proximoMesDe(id){
   if(state.resultado && state.resultado.ok){ state.resultado.valido=M.conferir(state.resultado.ctx, state.resultado.off).valido; continuar(); }
 }
 
-const cfgAtual = () => ({ano:state.ano, mes:state.mes, tipo:state.tipo, equipe:state.equipe, dias:state.dias, grupoMin:state.grupoMin,
+const cfgAtual = () => ({ano:state.ano, mes:state.mes, tipo:state.tipo, equipe:state.equipe, dias:state.dias, grupoMin:state.grupoMin, grupoMax:state.grupoMax,
   domModelo:state.domModelo, domN:state.domN, normaColetiva:state.normaColetiva, feriados:state.feriados, historico:state.historico, seed:state.seed});
 
 /* ================= apresentação ================= */
@@ -389,6 +391,14 @@ function resumoJornada(p){
 function resumoPessoa(p){
   return [p.cargo, p.sexo==='F'?'Feminino':'Masculino', p.entrada&&p.saida?`${p.entrada}–${p.saida}`:'', p.folgaFixa!==''?`folga fixa: ${DOW_LONG[p.folgaFixa]}`:''].filter(Boolean).join(' · ');
 }
+function blocoExtras(p){
+  const outras=[...new Set(state.equipe.map(x=>x.grupo.trim()).filter(Boolean))].filter(g=>g!==p.grupo.trim());
+  const marc=new Set(p.funcoesExtras||[]);
+  return `<div class="f"><span style="font-weight:600;font-size:.9rem">Também pode trabalhar como</span>
+    <span class="hint small muted">Marque se a pessoa pode cobrir outra área quando faltar gente ou quando a área dela estiver completa.</span>
+    ${outras.length ? `<div class="row" style="gap:14px;margin-top:4px">${outras.map(g=>`<label class="row small" style="gap:6px"><input type="checkbox" data-extra="${esc(g)}" ${marc.has(g)?'checked':''}> ${esc(g)}</label>`).join('')}</div>`
+      : '<span class="small muted">Preencha a área principal das outras pessoas para ver as opções aqui.</span>'}</div>`;
+}
 function cardPessoa(p,i){
   return `<details class="person" data-i="${i}">
     <summary><span class="who"><b data-sum="nome">${esc(p.nome)||'Sem nome'}</b><span data-sum="res">${esc(resumoPessoa(p))}</span></span><span class="chev">Editar</span></summary>
@@ -406,11 +416,12 @@ function cardPessoa(p,i){
       </div>
       <p class="small muted" data-sum="jor">${resumoJornada(p)}</p>
       <div class="grid g2">
-        <label class="f">Grupo de turno ou cargo <span class="hint">Use o mesmo nome para quem pode substituir um ao outro.</span>
-          <input type="text" list="dl-grupos" data-f="grupo" value="${esc(p.grupo)}" id="p${p.id}-grupo" placeholder="Ex.: Atendimento da manhã"></label>
+        <label class="f">Área ou função principal <span class="hint">Use o mesmo nome para quem faz o mesmo trabalho (ex.: Garçom).</span>
+          <input type="text" list="dl-grupos" data-f="grupo" value="${esc(p.grupo)}" id="p${p.id}-grupo" placeholder="Ex.: Garçom"></label>
         <label class="f">Folga que se repete toda semana <span class="hint">Deixe o gerador escolher, se não houver.</span>
           <select data-f="folgaFixa" id="p${p.id}-ff"><option value="">Deixar o gerador escolher</option>${DOW_LONG.map((d,k)=>`<option value="${k}" ${String(p.folgaFixa)===String(k)?'selected':''}>${d}</option>`).join('')}</select></label>
       </div>
+      ${blocoExtras(p)}
       <div class="row">
         <button type="button" class="btn" data-act="copiar" data-i="${i}">Copiar este horário para a equipe</button>
         <button type="button" class="btn" data-act="duplicar" data-i="${i}">Duplicar pessoa</button>
@@ -459,9 +470,14 @@ function etapa3(){
       <label class="chk"><input type="checkbox" data-dia="${k}" ${d.aberto?'checked':''} id="d-${k}"> ${DOW_LONG[k]}</label>
       ${d.aberto?`<span class="min">Pelo menos <input type="number" min="0" max="999" data-min="${k}" value="${d.min}" id="m-${k}" aria-label="Mínimo de pessoas na ${DOW_LONG[k]}"></span>`:'<span class="small">Fechado · todos folgam</span>'}
     </div>`).join('')}</div>
-    <details class="more" ${Object.values(state.grupoMin).some(v=>Number(v)>0)?'open':''}><summary>Precisa garantir pessoas em cada grupo de turno ou cargo?</summary>
-      ${grupos.length?`<div class="grid g3">${grupos.map((g,k)=>`<label class="f">${esc(g)} <span class="hint">mínimo por dia aberto</span><input type="number" min="0" data-gmin="${esc(g)}" id="g-${k}" value="${Number(state.grupoMin[g])||0}"></label>`).join('')}</div>`
-        :'<p class="muted small">Nenhum grupo cadastrado. Informe o grupo de cada pessoa na etapa Equipe.</p>'}
+    <details class="more" ${Object.values(state.grupoMin).some(v=>Number(v)>0)||Object.values(state.grupoMax).some(v=>Number(v)>0)?'open':''}><summary>Precisa garantir pessoas em cada área ou função?</summary>
+      ${grupos.length?`<div class="list">${grupos.map((g,k)=>`<div class="grid g3" style="align-items:end">
+          <b style="align-self:center">${esc(g)}</b>
+          <label class="f">Pelo menos<input type="number" min="0" data-gmin="${esc(g)}" id="g-${k}" value="${Number(state.grupoMin[g])||0}"></label>
+          <label class="f">No máximo <span class="hint">opcional</span><input type="number" min="0" data-gmax="${esc(g)}" id="gx-${k}" value="${Number(state.grupoMax[g])||''}" placeholder="sem limite"></label>
+        </div>`).join('')}</div>
+        <p class="small muted">O máximo é uma preferência: quando a área estiver completa, quem também pode trabalhar em outra função é remanejado. Se ninguém puder, a escala mostra um aviso.</p>`
+        :'<p class="muted small">Nenhuma área cadastrada. Informe a área principal de cada pessoa na etapa Equipe.</p>'}
     </details>
     ${domAberto?`<div class="grid g2">
       <label class="f" for="f-dom">Domingo de folga<select id="f-dom">
@@ -519,7 +535,8 @@ function resultado(){
     const hor=M.jornada(p)?`${p.entrada}–${p.saida}`:'';
     return `<tr><td class="name"><b>${esc(p.nome)}</b><span>${esc([p.cargo,p.grupo].filter(Boolean).join(' · '))}</span></td>${dias.map(x=>{
       const c=a.lab[e][x.i], lock=!x.aberto || ctx.fixed[e][x.i]!==null, ed=R.edit[e].has(x.i);
-      return `<td class="cell c-${c} ${x.dw===0?'wk':''} ${lock?'locked':''} ${ed?'edited':''}" data-e="${e}" data-i="${x.i}" ${lock?'':'tabindex="0" role="button"'} title="${esc(p.nome)} · ${br(x.d)} · ${NOME_COD[c]}${x.fer?' · '+esc(x.fer.nome):''}${lock?'':' · clique para alternar'}">${c}${(c==='T'||c==='FE')&&hor?`<small>${hor}</small>`:''}</td>`;}).join('')}</tr>`;
+      const fx = a.funcao && a.funcao[e][x.i] && a.funcao[e][x.i]!==p.grupo.trim() ? a.funcao[e][x.i] : '';
+      return `<td class="cell c-${c} ${x.dw===0?'wk':''} ${lock?'locked':''} ${ed?'edited':''}" data-e="${e}" data-i="${x.i}" ${lock?'':'tabindex="0" role="button"'} title="${esc(p.nome)} · ${br(x.d)} · ${NOME_COD[c]}${fx?' como '+esc(fx):''}${x.fer?' · '+esc(x.fer.nome):''}${lock?'':' · clique para alternar'}">${c}${(c==='T'||c==='FE')&&hor?`<small>${hor}</small>`:''}${fx?`<small class="outra">como ${esc(fx)}</small>`:''}</td>`;}).join('')}</tr>`;
   }).join('');
   const pres=dias.map(x=>{ const n=x.aberto?a.cnt[x.i]:0; return `<td class="${x.dw===0?'wk':''} ${x.aberto && n<x.min?'short':''}">${n}</td>`; }).join('');
   const mins=dias.map(x=>`<td class="${x.dw===0?'wk':''}">${x.min}</td>`).join('');
@@ -541,6 +558,7 @@ function resultado(){
     <div class="legend">${['T','RSR','FER','FG','FE','FC'].map(c=>`<span><i class="c-${c}">${c}</i>${NOME_COD[c]}</span>`).join('')}</div>
     <div class="tablewrap"><table class="esc"><thead><tr><th class="name">Pessoa</th>${head}</tr></thead>
       <tbody>${rows}<tr class="tot"><td class="name">Presentes</td>${pres}</tr><tr class="tot"><td class="name">Mínimo</td>${mins}</tr></tbody></table></div>
+    ${a.funcao ? '<p class="small muted">Quando alguém trabalha em outra área naquele dia, a célula mostra “como …”.</p>' : ''}
     <p class="small muted">RSR: repouso semanal obrigatório. FER: feriado sem trabalho, conta como repouso. FG: folga além do obrigatório. FC: folga em troca de feriado trabalhado, não conta como repouso.</p>
     <div class="row"><button type="button" class="btn" data-act="outra">Gerar outra versão</button>
       <button type="button" class="btn" data-act="continuar" ${a.valido?'':'disabled'}>Continuar no mês seguinte →</button>
@@ -702,6 +720,7 @@ app.addEventListener('input', ev=>{
   }
   if(t.dataset.min!==undefined){ state.dias[Number(t.dataset.min)].min=Math.max(0,Number(t.value)||0); agendarSalvar(); return; }
   if(t.dataset.gmin!==undefined){ state.grupoMin[t.dataset.gmin]=Math.max(0,Number(t.value)||0); agendarSalvar(); return; }
+  if(t.dataset.gmax!==undefined){ const v=Number(t.value)||0; if(v>0) state.grupoMax[t.dataset.gmax]=v; else delete state.grupoMax[t.dataset.gmax]; agendarSalvar(); return; }
   if(t.id==='f-domn'){ state.domN=Math.max(1,Number(t.value)||1); agendarSalvar(); return; }
   if(t.id==='f-empresa'){ state.empresa=t.value; agendarSalvar(); return; }
   if(t.id==='f-norma-dia'){ state.normaColetiva.diario=t.value; agendarSalvar(); return; }
@@ -714,6 +733,11 @@ app.addEventListener('change', ev=>{
     render(); return; }
   if(t.id==='f-tipo'){ state.tipo=t.value; render(); return; }
   if(t.id==='f-norma'){ state.normaColetiva.situacao=t.value; render(); return; }
+  if(t.dataset.extra!==undefined){
+    const card=t.closest('.person'), p=state.equipe[Number(card.dataset.i)], g=t.dataset.extra;
+    const lista=new Set(p.funcoesExtras||[]); if(t.checked) lista.add(g); else lista.delete(g);
+    p.funcoesExtras=[...lista]; state.exemplo=false; agendarSalvar(); return;
+  }
   if(t.dataset.dia!==undefined){ state.dias[Number(t.dataset.dia)].aberto=t.checked; render(); return; }
   if(t.id==='f-fechadom'){ state.dias[6].aberto=!t.checked; render(); return; }
   if(t.id==='f-dom'){ state.domModelo=t.value; render(); return; }
@@ -787,7 +811,7 @@ function semanasDoMes(ctx){
 const COR = {T:[220,240,227], RSR:[232,236,238], FG:[227,235,245], FER:[251,231,190], FE:[231,218,246], FC:[212,238,240]};
 const TXT = {T:[20,92,53], RSR:[85,100,107], FG:[59,88,120], FER:[122,75,0], FE:[90,47,140], FC:[21,94,102]};
 const LEGENDA = 'T trabalho · RSR repouso semanal · FER feriado sem trabalho · FG folga da escala · FE trabalho em feriado · FC folga compensatória';
-const celula = (p,c) => (c==='T'||c==='FE') ? `${c}\n${p.entrada}–${p.saida}` : c;
+const celula = (p,c,f) => (c==='T'||c==='FE') ? `${c}\n${p.entrada}–${p.saida}${f && f!==p.grupo.trim() ? '\ncomo '+f : ''}` : c;
 const ordemNivel={irregular:0, atencao:1, nverif:2, info:3}, nomeNivel={irregular:'Irregular', atencao:'Atenção', nverif:'Não verificado', info:'Informação'};
 
 /* as fontes padrão do PDF não têm travessão nem aspas curvas */
@@ -811,7 +835,7 @@ async function baixarPDF(){
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(86,107,101);
     doc.text(`${br(sem[0].d)} a ${br(sem[sem.length-1].d)} · ${LEGENDA}`, 14, 21);
     const head=[['Pessoa', ...sem.map(x=>`${ddmm(x.d)}\n${DOW_LONG[x.dw]}`)]];
-    const body=state.equipe.map((p,e)=>[`${p.nome}\n${[p.cargo,p.grupo].filter(Boolean).join(' · ')}`, ...sem.map(x=>celula(p, a.lab[e][x.i]))]);
+    const body=state.equipe.map((p,e)=>[`${p.nome}\n${[p.cargo,p.grupo].filter(Boolean).join(' · ')}`, ...sem.map(x=>celula(p, a.lab[e][x.i], a.funcao && a.funcao[e][x.i]))]);
     body.push(['Presentes', ...sem.map(x=>String(x.aberto?a.cnt[x.i]:0))]);
     body.push(['Mínimo', ...sem.map(x=>String(x.min))]);
     doc.autoTable({head, body, startY:26, theme:'grid', styles:{fontSize:8, cellPadding:2, valign:'middle', lineColor:[211,222,218], lineWidth:0.2},
@@ -874,7 +898,7 @@ async function baixarExcel(){
   ws.addRow(['Pessoa','Cargo','Grupo', ...dias.map(x=>`${ddmm(x.d)}\n${DOW[x.dw]}`)]);
   ws.getRow(2).height=30; ws.getRow(2).eachCell(cab);
   state.equipe.forEach((p,e)=>{
-    const row=ws.addRow([p.nome, p.cargo, p.grupo, ...dias.map(x=>celula(p, a.lab[e][x.i]))]);
+    const row=ws.addRow([p.nome, p.cargo, p.grupo, ...dias.map(x=>celula(p, a.lab[e][x.i], a.funcao && a.funcao[e][x.i]))]);
     row.height=30;
     dias.forEach((x,k)=>{ const c=a.lab[e][x.i], cell=row.getCell(4+k);
       cell.fill={type:'pattern', pattern:'solid', fgColor:{argb:argb(COR[c])}}; cell.font={color:{argb:argb(TXT[c])}, bold:true};
