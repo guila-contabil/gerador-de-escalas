@@ -815,7 +815,8 @@ const celula = (p,c,f) => (c==='T'||c==='FE') ? `${c}\n${p.entrada}–${p.saida}
 const ordemNivel={irregular:0, atencao:1, nverif:2, info:3}, nomeNivel={irregular:'Irregular', atencao:'Atenção', nverif:'Não verificado', info:'Informação'};
 
 /* as fontes padrão do PDF não têm travessão nem aspas curvas */
-const pt = v => String(v).replace(/[–—]/g,'-').replace(/[“”]/g,'"');
+// a tabela do PDF passa células com várias linhas como lista: cada linha é tratada separadamente
+const pt = v => Array.isArray(v) ? v.map(pt) : String(v).replace(/[–—]/g,'-').replace(/[“”]/g,'"');
 const ptRows = rows => rows.map(r=>r.map(pt));
 async function baixarPDF(){
   if(!window.jspdf){ toast('A biblioteca de PDF não carregou. Recarregue a página.'); return; }
