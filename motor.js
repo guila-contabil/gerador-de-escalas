@@ -56,10 +56,35 @@
   }
   const regimeAntigo = ws => fimSemana(ws) < VIG_2F;
   const MAX_DIAS_SEGUIDOS = 6; // J12 (D10): OJ 410 da SDI-1/TST e Tema Repetitivo 265 — vale em qualquer regime
-  function limiteSemanal(ws) { // J04 (D7: horas de relógio)
-    const f = fimSemana(ws);
-    return f >= VIG_40 ? 2400 : f >= VIG_2F ? 2520 : 2640;
+  /* J04, J05, D11 — limites de jornada por período de vigência (minutos inteiros).
+   * Alterações futuras: editar só esta tabela. */
+  const PERIODOS_JORNADA = [
+    { id: "pre-ec141", ate: "2026-12-15", semanal: 2640, diario: 480, transitorio: null,
+      base: "CF, art. 7º, XIII (redação original); CLT, art. 58" },
+    { id: "ec141-42h", de: "2026-12-16", ate: "2027-12-15", semanal: 2520, diario: 480, transitorio: 504,
+      base: "EC 141/2026, art. 6º, I; STF, ADIs 8.041 e 8.042 (cautelar de 12/11/2026)" },
+    { id: "ec141-40h", de: "2027-12-16", semanal: 2400, diario: 480, transitorio: null,
+      base: "CF, art. 7º, XIII (red. EC 141/2026); EC 141/2026, art. 6º, II" },
+  ];
+  function periodoJornada(k) { // k = data "AAAA-MM-DD"
+    return PERIODOS_JORNADA.find(x => (!x.de || k >= x.de) && (!x.ate || k <= x.ate));
   }
+  /* norma coletiva da escala: { situacao: "nao_sei" | "nao" | "sim", diario: "HH:MM", semanal: horas } */
+  function limitesJornada(cfg, k) {
+    const per = periodoJornada(k), n = (cfg && cfg.normaColetiva) || { situacao: "nao_sei" };
+    let diario = per.diario, semanal = per.semanal, origem = "lei", duvida = null, base = per.base;
+    if (n.situacao === "sim") {
+      const d = toMin(n.diario); if (d) diario = d;
+      const sem = Number(n.semanal) > 0 ? Math.round(Number(n.semanal) * 60) : null;
+      if (sem) semanal = Math.min(semanal, sem);
+      origem = "coletiva"; base = "Norma coletiva informada; " + per.base;
+    } else if (per.transitorio) {
+      if (n.situacao === "nao") { diario = per.transitorio; origem = "stf"; }
+      else duvida = per.transitorio;   // não sabe se há norma: 8h–8h24 fica "a confirmar"
+    }
+    return { periodo: per.id, diario, semanal, origem, duvida, base };
+  }
+  function limiteSemanal(ws, cfg) { return limitesJornada(cfg, iso(addDays(ws, 6))).semanal; }
   function janelaModelo(cfg) { // J13 (D5)
     if (cfg.domModelo === "atividade") return 7;
     if (cfg.domModelo === "outro") return Math.max(1, Number(cfg.domN) || 1);
@@ -118,7 +143,7 @@
     const weeks = [];
     for (let i = 0; i < days.length; i += 7) {
       const ws = days[i].d;
-      weeks.push({ i0: i, ws, req: folgasSemana(cfg, ws), antigo: regimeAntigo(ws), limite: limiteSemanal(ws) });
+      weeks.push({ i0: i, ws, req: folgasSemana(cfg, ws), antigo: regimeAntigo(ws), limite: limiteSemanal(ws, cfg) });
     }
     const grupoDe = cfg.equipe.map(p => String(p.grupo || "").trim());
     const gmin = {};
@@ -259,6 +284,17 @@
     yield* dfs(0);
   }
 
+  /* folgas mínimas da semana: repouso legal e, além dele, o necessário para as horas
+   * ordinárias (até o limite diário) não passarem do limite semanal — D11 */
+  function folgasMinimas(ctx, e, w) {
+    const j = jornada(ctx.cfg.equipe[e]);
+    if (!j || j.eff <= 0) return w.req;
+    const lim = limitesJornada(ctx.cfg, iso(addDays(w.ws, 6)));
+    const ordDia = Math.min(j.eff, lim.diario);
+    const maxDias = Math.floor(w.limite / ordDia);
+    return Math.min(7, Math.max(w.req, 7 - maxDias));
+  }
+
   /* ============ fase 2: demais folgas, semana a semana, com cobertura obrigatória ============ */
   function contar(ctx, off) {
     const { days, E, gmin, grupoDe } = ctx;
@@ -294,7 +330,7 @@
     const detalhe = [];
     for (let e = 0; e < E; e++) {
       const tem = idx.filter(i => off[e][i]).length;
-      let precisa = Math.max(0, w.req - tem);
+      let precisa = Math.max(0, folgasMinimas(ctx, e, w) - tem);
       let cedo = 0, prazo = Infinity;
       {
         prazo = ultimaFolga[e] + MAX_DIAS_SEGUIDOS + 1;   // OJ 410: folga até o 7º dia
@@ -302,7 +338,7 @@
       }
       const resto = Math.max(0, precisa - cedo);
       const cand = candidatos(e);
-      detalhe.push({ e, precisa: resto + cedo, cand: cand.length });
+      detalhe.push({ e, precisa: resto + cedo, cand: cand.length, porHoras: folgasMinimas(ctx, e, w) > w.req });
       if (!resto && !cedo) continue;
       const nCedo = F.no(), nResto = F.no();
       if (cedo) F.aresta(S, nCedo, cedo, 0);
@@ -440,7 +476,9 @@
         `A equipe precisa de mais ${f.demanda} folga${f.demanda === 1 ? "" : "s"} nesta semana, mas os dias abertos só comportam ${f.obtido} sem ficar abaixo do mínimo (faltam ${falta}).`,
         ...f.dias.map(d => `${DOW[days[d.i].dw]} ${ddmm(days[d.i].d)}: ${d.disp} disponíve${d.disp === 1 ? "l" : "is"}, mínimo ${d.min} → cabem ${Math.max(0, d.disp - d.min)} folga${d.disp - d.min === 1 ? "" : "s"}`),
       ],
-      sugestoes: ["Reduza o mínimo em algum dia desta semana.", "Inclua mais pessoas.", "Feche a empresa em algum dia da semana.", "Revise as folgas fixas."],
+      sugestoes: [
+        ...(f.detalhe.some(d => d.porHoras) ? [`Algumas pessoas precisam de mais folgas para não passar do limite semanal de ${w.limite / 60} h com a jornada diária informada. Revise os horários ou a norma coletiva.`] : []),
+        "Reduza o mínimo em algum dia desta semana.", "Inclua mais pessoas.", "Feche a empresa em algum dia da semana.", "Revise as folgas fixas."],
     };
   }
 
@@ -477,6 +515,31 @@
       if (achou >= 0) lab[e][achou] = "FC"; else dobras.push({ e, i });
     }
     return { lab, dobras };
+  }
+
+  /* ============ horas extras (D11) ============
+   * diária  = minutos acima do limite diário do dia;
+   * semanal = horas ordinárias da semana (cada dia limitado ao limite diário) acima do limite semanal.
+   * Assim, o que já é extra pelo critério diário não volta a ser contado no semanal. */
+  function horasExtras(ctx, off, e) {
+    const { cfg, days, weeks } = ctx, j = jornada(cfg.equipe[e]);
+    if (!j) return null;
+    return weeks.filter(w => days.slice(w.i0, w.i0 + 7).some(x => x.inMonth)).map(w => {
+      let trab = 0, ordinarias = 0, diaria = 0, aConfirmar = 0, diasTrab = 0;
+      const porDia = [];
+      for (let i = w.i0; i < w.i0 + 7; i++) {
+        const x = days[i]; if (!x.aberto || off[e][i]) continue;
+        const lim = limitesJornada(cfg, x.k);
+        const teto = lim.duvida || lim.diario;                 // "não sei": acima de 8h24 é extra certo
+        const exc = Math.max(0, j.eff - teto);
+        const duv = lim.duvida ? Math.max(0, Math.min(j.eff, lim.duvida) - lim.diario) : 0;
+        trab += j.eff; diaria += exc; aConfirmar += duv; diasTrab++;
+        ordinarias += j.eff - exc;
+        porDia.push({ i, k: x.k, trabalho: j.eff, limite: teto, extra: exc, aConfirmar: duv });
+      }
+      const semanal = Math.max(0, ordinarias - w.limite);
+      return { ws: w.ws, limiteSemanal: w.limite, diasTrab, trab, ordinarias: ordinarias - semanal, diaria, semanal, total: diaria + semanal, aConfirmar, porDia };
+    });
   }
 
   /* ============ OJ 410: sequências de mais de 6 dias de trabalho ============ */
@@ -547,18 +610,37 @@
         "Jornada acima de 6 h exige intervalo mínimo de 1 h (30 min se a convenção coletiva permitir).", "CLT, art. 71, caput; art. 611-A, III");
       else if (j.informouIntervalo && j.eff > 240 && j.eff <= 360 && j.itv < 15) add("irregular", `${nome(e)}: intervalo de ${j.itv} min`,
         "Jornada acima de 4 h e até 6 h exige 15 min de intervalo.", "CLT, art. 71, § 1º");
-      if (j.eff > 480) add("atencao", `${nome(e)}: ${fmtH(j.eff)} por dia`, "Acima de 8 h diárias só com acordo de compensação ou banco de horas.", "CF, art. 7º, XIII; CLT, arts. 58 e 59");
       if (1440 - j.dur < 660) add("irregular", `${nome(e)}: menos de 11 h entre jornadas`, `Entre a saída e a entrada do dia seguinte ficam ${fmtH(1440 - j.dur)}.`, "CLT, art. 66");
       if (j.not > 0) add("info", `${nome(e)}: ${fmtH(j.not)} noturnas por dia (${fmtH(j.notReduzida)} em hora reduzida)`,
         "Horário entre 22h e 5h. A escala usa horas de relógio; na folha, aplique a hora noturna de 52'30\" e o adicional.", "CLT, art. 73; decisão D7");
-      const exc = [];
-      for (const w of weeks) {
-        const idx = [...Array(7)].map((_, k) => w.i0 + k);
-        if (!idx.some(i => days[i].inMonth)) continue;
-        const trab = idx.filter(i => days[i].aberto && !off[e][i]).length;
-        if (trab * j.eff > w.limite) exc.push(`${ddmm(w.ws)} (${fmtH(trab * j.eff)} de ${w.limite / 60} h)`);
+      // horas extras (D11): diária e semanal separadas, sem duplicidade
+      const he = horasExtras(ctx, off, e) || [];
+      const diasMes = he.flatMap(s => s.porDia).filter(d => days[ctx.days.findIndex(x => x.k === d.k)].inMonth);
+      const comExtra = diasMes.filter(d => d.extra > 0);
+      if (comExtra.length) {
+        const total = comExtra.reduce((t, d) => t + d.extra, 0), maior = Math.max(...comExtra.map(d => d.extra));
+        add(maior > 120 ? "irregular" : "atencao", `${nome(e)}: horas extras diárias`,
+          `${fmtH(j.eff)} de trabalho efetivo por dia, acima do limite diário de ${fmtH(comExtra[0].limite)}: ${maior} min a mais por dia em ${comExtra.length} dia${comExtra.length === 1 ? "" : "s"} do mês (total ${fmtH(total)}).` +
+          (maior > 120 ? " Passa de 2 h extras por dia." : " Exige acordo de prorrogação ou compensação e pagamento na folha."),
+          maior > 120 ? "CLT, art. 59, caput (máximo de 2 h extras por dia)" : "CF, art. 7º, XIII e XVI; CLT, arts. 58 e 59");
       }
-      if (exc.length) add("irregular", `${nome(e)}: acima do limite semanal de horas`, `Semanas: ${exc.join("; ")}.`, "CF, art. 7º, XIII; EC 141/2026, art. 6º");
+      const semanas = he.filter(s => s.semanal > 0);
+      if (semanas.length) add("atencao", `${nome(e)}: horas extras semanais`,
+        semanas.map(s => `semana de ${ddmm(s.ws)}: ${fmtH(s.semanal)} acima de ${s.limiteSemanal / 60} h`).join("; ") + ". Não inclui as horas já contadas como extras diárias.",
+        "CF, art. 7º, XIII (EC 141/2026, art. 6º); CLT, art. 59");
+      const duvida = diasMes.filter(d => d.aConfirmar > 0);
+      if (duvida.length) add("nverif", `${nome(e)}: jornada acima de 8 h depende da norma coletiva`,
+        `${duvida[0].aConfirmar} min por dia, em ${duvida.length} dia${duvida.length === 1 ? "" : "s"}, ficam entre 8h e 8h24. Sem norma coletiva celebrada até 15/12/2026, a cautelar do STF permite até 8h24 sem hora extra; com norma coletiva, vale o que ela fixar. Informe a situação na etapa Escala.`,
+        "STF, ADIs 8.041 e 8.042 (cautelar de 12/11/2026); EC 141/2026, art. 6º, I");
+    }
+
+    // origem dos limites de jornada usados
+    {
+      const usados = [...new Map(days.filter(x => x.inMonth).map(x => { const l = limitesJornada(cfg, x.k); return [l.periodo + l.origem, l]; })).values()];
+      for (const l of usados) {
+        if (l.origem === "coletiva") add("info", "Limites de jornada da norma coletiva", `Diário de ${fmtH(l.diario)} e semanal de ${fmtH(l.semanal)}, conforme a norma coletiva informada. Confira a vigência e a compatibilidade com a EC 141/2026 (art. 3º).`, l.base);
+        else if (l.origem === "stf") add("info", "Jornada transitória de até 8h24", "Sem norma coletiva celebrada até 15/12/2026: até 8h24 por dia e 42 h por semana, sem hora extra nos 24 minutos (até 15/12/2027).", l.base);
+      }
     }
 
     // OJ 410 sem o mês anterior: não presume descanso
@@ -603,6 +685,11 @@
       });
       r.trab = r.T + r.FE; r.folgas = r.RSR + r.FG + r.FER + r.FC;
       r.horas = j ? r.trab * j.eff : 0;
+      const he = horasExtras(ctx, off, e) || [];
+      const dias = he.flatMap(s => s.porDia).filter(d => days.find(x => x.k === d.k).inMonth);
+      r.extrasDiarias = dias.reduce((t, d) => t + d.extra, 0);
+      r.extrasSemanais = he.reduce((t, s) => t + s.semanal, 0);
+      r.extras = r.extrasDiarias + r.extrasSemanais;
       return r;
     });
   }
@@ -625,6 +712,7 @@
     DOW, VIG_2F, VIG_40, ud, addDays, iso, dowOf, ddmm, br, fromIso, toMin, fmtH,
     pascoa, feriadosDoAno, feriadosDoMes, folgasSemana, regimeAntigo, limiteSemanal, janelaDomingo, baseDomingo,
     jornada, contexto, contar, gerarEscala, rotular, conferir, resumo, historicoDe, rng32, sequenciasLongas, MAX_DIAS_SEGUIDOS,
+    PERIODOS_JORNADA, periodoJornada, limitesJornada, horasExtras, folgasMinimas,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = Motor;
   else root.Motor = Motor;

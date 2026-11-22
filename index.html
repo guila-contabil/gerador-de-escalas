@@ -216,7 +216,7 @@ const state = {
   etapa:1, ano:proxMes.getFullYear(), mes:proxMes.getMonth(), tipo:'5x2',
   equipe: exemplo(), exemplo:true,
   dias: DOW.map((_,i)=>({aberto:true, min: i===6 ? 2 : 3})),
-  grupoMin:{}, domModelo:'comercio', domN:3,
+  grupoMin:{}, domModelo:'comercio', domN:3, normaColetiva:{situacao:'nao_sei', diario:'08:00', semanal:''},
   feriados:[], historico:null, resultado:null, seed:1,
   id:null, empresa:'', novaAberta:false, confirmaExcluir:null
 };
@@ -229,7 +229,7 @@ const podeSalvar = !!banco && Array.isArray(banco.escalas);
 if(!podeSalvar) banco={escalas:[]};
 function gravarBanco(){ if(!podeSalvar) return false; try{ localStorage.setItem(CHAVE, JSON.stringify(banco)); return true; }catch(_){ return false; } }
 const novoId = () => 'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-const CAMPOS=['ano','mes','tipo','equipe','exemplo','dias','grupoMin','domModelo','domN','feriados','historico','seed','empresa'];
+const CAMPOS=['ano','mes','tipo','equipe','exemplo','dias','grupoMin','domModelo','domN','normaColetiva','feriados','historico','seed','empresa'];
 const copia = o => JSON.parse(JSON.stringify(o));
 function registro(){
   const R=state.resultado, dados={};
@@ -248,11 +248,12 @@ let tSalvar=null;
 function agendarSalvar(){ clearTimeout(tSalvar); tSalvar=setTimeout(salvarAtual, 300); }
 function padraoNovo(comExemplo){
   return {tipo:'5x2', equipe: comExemplo?exemplo():[], exemplo:!!comExemplo, dias:DOW.map((_,i)=>({aberto:true, min:i===6?2:3})),
-    grupoMin:{}, domModelo:'comercio', domN:3, empresa:''};
+    grupoMin:{}, domModelo:'comercio', domN:3, normaColetiva:{situacao:'nao_sei', diario:'08:00', semanal:''}, empresa:''};
 }
 function carregar(rec){
   const d=copia(rec.dados);
   for(const k of CAMPOS) if(k in d) state[k]=d[k];
+  if(!state.normaColetiva) state.normaColetiva={situacao:'nao_sei', diario:'08:00', semanal:''};
   uid=Math.max(uid, ...state.equipe.map(p=>Number(p.id)||0))+1;
   state.id=rec.id; state.resultado=null; state.novaAberta=false; state.confirmaExcluir=null;
   if(rec.resultado && rec.resultado.ok){
@@ -272,7 +273,7 @@ function novaEscala(origem){   // origem: id de uma escala salva, 'zero' ou 'exe
   state.ano=proxMes.getFullYear(); state.mes=proxMes.getMonth(); state.feriados=M.feriadosDoMes(state.ano, state.mes);
   if(base){
     const d=copia(base.dados);
-    Object.assign(state, {tipo:d.tipo, equipe:d.equipe, exemplo:false, dias:d.dias, grupoMin:d.grupoMin, domModelo:d.domModelo, domN:d.domN, empresa:d.empresa});
+    Object.assign(state, {tipo:d.tipo, equipe:d.equipe, exemplo:false, dias:d.dias, grupoMin:d.grupoMin, domModelo:d.domModelo, domN:d.domN, normaColetiva:d.normaColetiva||{situacao:'nao_sei', diario:'08:00', semanal:''}, empresa:d.empresa});
     uid=Math.max(uid, ...state.equipe.map(p=>Number(p.id)||0))+1;
   } else Object.assign(state, padraoNovo(origem==='exemplo'));
   if(!pode6x1()) state.tipo='5x2';
@@ -295,7 +296,7 @@ function proximoMesDe(id){
 }
 
 const cfgAtual = () => ({ano:state.ano, mes:state.mes, tipo:state.tipo, equipe:state.equipe, dias:state.dias, grupoMin:state.grupoMin,
-  domModelo:state.domModelo, domN:state.domN, feriados:state.feriados, historico:state.historico, seed:state.seed});
+  domModelo:state.domModelo, domN:state.domN, normaColetiva:state.normaColetiva, feriados:state.feriados, historico:state.historico, seed:state.seed});
 
 /* ================= apresentação ================= */
 const app=document.getElementById('app');
@@ -355,10 +356,32 @@ function etapa1(){
         </select></label>
     </div>
     <div class="note">${txt}</div>
+    ${blocoNorma()}
     <p class="small muted">A EC 141/2026, publicada em 16/10/2026, garante duas folgas por semana a partir de 16/12/2026 e limita a jornada a 42 h semanais a partir dessa data e a 40 h a partir de 16/12/2027. Confira também a convenção coletiva da categoria. <a href="https://www.planalto.gov.br/ccivil_03/constituicao/emendas/emc/emc141.htm" target="_blank" rel="noopener">Ler a emenda</a></p>
   </section>${nav(0,'Continuar →','next')}`;
 }
 
+function blocoNorma(){
+  const n=state.normaColetiva;
+  const transicao = (state.ano*12+state.mes) >= (2026*12+11) && (state.ano*12+state.mes) <= (2027*12+11);
+  return `<fieldset class="grid" style="border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:0">
+    <legend class="small" style="font-weight:700;padding:0 6px">Convenção ou acordo coletivo sobre jornada</legend>
+    <label class="f" for="f-norma">A empresa tem norma coletiva que define a jornada?
+      <select id="f-norma">
+        <option value="nao_sei" ${n.situacao==='nao_sei'?'selected':''}>Ainda não sei / vou conferir</option>
+        <option value="nao" ${n.situacao==='nao'?'selected':''}>Não há norma coletiva sobre jornada celebrada até 15/12/2026</option>
+        <option value="sim" ${n.situacao==='sim'?'selected':''}>Sim, há norma coletiva com jornada própria</option>
+      </select></label>
+    ${n.situacao==='sim' ? `<div class="grid g2" style="align-items:end">
+      <label class="f" for="f-norma-dia">Jornada diária máxima prevista na norma<input type="time" id="f-norma-dia" value="${esc(n.diario)}"></label>
+      <label class="f" for="f-norma-sem">Jornada semanal da norma, em horas <span class="hint">Opcional. Só vale se for menor que o limite legal.</span><input type="number" id="f-norma-sem" min="1" max="44" step="0.5" value="${esc(n.semanal)}"></label>
+    </div>` : ''}
+    <p class="small muted">${transicao
+      ? 'De 16/12/2026 a 15/12/2027 o limite é de 42 h por semana. Sem norma coletiva celebrada até 15/12/2026, a cautelar do STF (ADIs 8.041 e 8.042) permite distribuir as 42 h em 5 dias de até 8h24, sem hora extra nos 24 minutos. Com norma coletiva, vale o que ela fixar.'
+      : 'Fora do período de 16/12/2026 a 15/12/2027, o limite diário de referência é de 8 h. Se houver norma coletiva com outra jornada, informe acima.'}
+      ${n.situacao==='nao_sei' ? ' Enquanto a situação não for informada, o que passar de 8 h aparece como “a confirmar”.' : ''}</p>
+  </fieldset>`;
+}
 function resumoJornada(p){
   const j=M.jornada(p); if(!j) return 'Informe entrada e saída.';
   return `Jornada de ${fmtH(j.eff)} por dia${j.itv?` (intervalo de ${j.itv} min)`:', sem intervalo informado'}${j.cruza?' · termina no dia seguinte':''}${j.not?` · ${fmtH(j.not)} noturnas (${fmtH(j.notReduzida)} em hora reduzida)`:''}.`;
@@ -528,8 +551,9 @@ function resultado(){
     <div class="alerts">${alertas.map(x=>`<div class="alert ${x.nivel}"><span class="lvl">${nomeNivel[x.nivel]}</span><div><b>${esc(x.titulo)}</b><div class="small">${esc(x.texto)}</div></div><span class="base">${esc(x.base)}</span></div>`).join('')}</div>
   </section>
   <section class="panel"><div class="head"><h2>Resumo por pessoa</h2></div>
-    <div class="tablewrap" style="border:none"><table class="res"><thead><tr><th>Pessoa</th><th>Dias trabalhados</th><th>RSR</th><th>FER</th><th>FG</th><th>FC</th><th>Domingos trabalhados</th><th>Feriados trabalhados</th><th>Horas no mês</th></tr></thead>
-    <tbody>${res.map(r=>`<tr><td>${esc(r.p.nome)}</td><td>${r.trab}</td><td>${r.RSR}</td><td>${r.FER}</td><td>${r.FG}</td><td>${r.FC}</td><td>${r.dom}</td><td>${r.FE}</td><td>${fmtH(r.horas)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="tablewrap" style="border:none"><table class="res"><thead><tr><th>Pessoa</th><th>Dias trabalhados</th><th>RSR</th><th>FER</th><th>FG</th><th>FC</th><th>Domingos trabalhados</th><th>Feriados trabalhados</th><th>Horas no mês</th><th>Horas extras</th></tr></thead>
+    <tbody>${res.map(r=>`<tr><td>${esc(r.p.nome)}</td><td>${r.trab}</td><td>${r.RSR}</td><td>${r.FER}</td><td>${r.FG}</td><td>${r.FC}</td><td>${r.dom}</td><td>${r.FE}</td><td>${fmtH(r.horas)}</td><td>${r.extras?fmtH(r.extras):'—'}</td></tr>`).join('')}</tbody></table></div>
+    <p class="small muted">Horas extras = minutos acima do limite diário + horas ordinárias acima do limite semanal, sem contar o mesmo minuto duas vezes. A ferramenta não calcula valores de pagamento.</p>
   </section>`;
 }
 
@@ -680,6 +704,8 @@ app.addEventListener('input', ev=>{
   if(t.dataset.gmin!==undefined){ state.grupoMin[t.dataset.gmin]=Math.max(0,Number(t.value)||0); agendarSalvar(); return; }
   if(t.id==='f-domn'){ state.domN=Math.max(1,Number(t.value)||1); agendarSalvar(); return; }
   if(t.id==='f-empresa'){ state.empresa=t.value; agendarSalvar(); return; }
+  if(t.id==='f-norma-dia'){ state.normaColetiva.diario=t.value; agendarSalvar(); return; }
+  if(t.id==='f-norma-sem'){ state.normaColetiva.semanal=t.value; agendarSalvar(); return; }
 });
 app.addEventListener('change', ev=>{
   const t=ev.target;
@@ -687,6 +713,7 @@ app.addEventListener('change', ev=>{
     if(state.historico && state.historico.ate!==iso(ud(y,m-1,0))) state.historico=null;
     render(); return; }
   if(t.id==='f-tipo'){ state.tipo=t.value; render(); return; }
+  if(t.id==='f-norma'){ state.normaColetiva.situacao=t.value; render(); return; }
   if(t.dataset.dia!==undefined){ state.dias[Number(t.dataset.dia)].aberto=t.checked; render(); return; }
   if(t.id==='f-fechadom'){ state.dias[6].aberto=!t.checked; render(); return; }
   if(t.id==='f-dom'){ state.domModelo=t.value; render(); return; }
@@ -801,8 +828,8 @@ async function baixarPDF(){
   marca();
   doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(15,34,54); doc.text('Resumo e conferência', 14, 15);
   doc.autoTable({startY:20, theme:'grid', styles:{fontSize:8.5, cellPadding:2}, headStyles:{fillColor:[39,90,135]},
-    head:[['Pessoa','Dias trabalhados','RSR','FER','FG','FC','Domingos trabalhados','Feriados trabalhados','Horas no mês']],
-    body:res.map(r=>[r.p.nome, r.trab, r.RSR, r.FER, r.FG, r.FC, r.dom, r.FE, fmtH(r.horas)])});
+    head:[['Pessoa','Dias trabalhados','RSR','FER','FG','FC','Domingos trabalhados','Feriados trabalhados','Horas no mês','Horas extras']],
+    body:res.map(r=>[r.p.nome, r.trab, r.RSR, r.FER, r.FG, r.FC, r.dom, r.FE, fmtH(r.horas), r.extras?fmtH(r.extras):'-'])});
   doc.autoTable({startY:doc.lastAutoTable.finalY+8, theme:'grid', styles:{fontSize:8, cellPadding:2}, headStyles:{fillColor:[39,90,135]},
     columnStyles:{0:{cellWidth:24}, 3:{cellWidth:60}},
     head:[['Nível','Item','Detalhe','Base']],
@@ -865,11 +892,11 @@ async function baixarExcel(){
 
   const wr=wb.addWorksheet('Resumo', {views:[{state:'frozen', ySplit:2}]});
   wr.addRow([]);
-  wr.addRow(['Pessoa','Cargo','Grupo','Dias trabalhados','RSR','FER','FG','FC','Domingos trabalhados','Feriados trabalhados','Horas no mês']);
-  res.forEach(r=>wr.addRow([r.p.nome, r.p.cargo, r.p.grupo, r.trab, r.RSR, r.FER, r.FG, r.FC, r.dom, r.FE, fmtH(r.horas)]));
+  wr.addRow(['Pessoa','Cargo','Grupo','Dias trabalhados','RSR','FER','FG','FC','Domingos trabalhados','Feriados trabalhados','Horas no mês','Horas extras']);
+  res.forEach(r=>wr.addRow([r.p.nome, r.p.cargo, r.p.grupo, r.trab, r.RSR, r.FER, r.FG, r.FC, r.dom, r.FE, fmtH(r.horas), r.extras?fmtH(r.extras):'—']));
   wr.getRow(2).eachCell(cab);
   wr.columns.forEach((c,k)=>c.width= k<3?22:14);
-  faixaMarca(wr, 4, 11, `Resumo por pessoa · ${tituloExport()}`);
+  faixaMarca(wr, 4, 12, `Resumo por pessoa · ${tituloExport()}`);
   wr.addRow([]); wr.addRow([AVISO_PROTECAO]).font={italic:true, color:{argb:'FF566B65'}};
 
   const wa=wb.addWorksheet('Conferência', {views:[{state:'frozen', ySplit:2}]});
