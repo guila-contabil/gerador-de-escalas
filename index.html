@@ -384,6 +384,20 @@ function blocoNorma(){
       ${n.situacao==='nao_sei' ? ' Enquanto a situação não for informada, o que passar de 8 h aparece como “a confirmar”.' : ''}</p>
   </fieldset>`;
 }
+function blocoHorariosDia(p){
+  const hd=p.horariosDia||{}, usados=Object.keys(hd).filter(k=>hd[k]&&hd[k].entrada&&hd[k].saida).length;
+  return `<details class="more"${usados?' open':''}><summary>Horário diferente em alguns dias${usados?` (${usados})`:''}</summary>
+    <p class="small muted">Preencha só os dias com horário diferente do padrão (ex.: sábado das 08:00 às 12:00). Dias em branco usam o horário acima.</p>
+    <div class="tablewrap" style="border:none"><table class="res" style="min-width:520px"><thead><tr><th>Dia</th><th>Entrada</th><th>Saída</th><th>Intervalo: início</th><th>Intervalo: fim</th></tr></thead><tbody>
+    ${DOW_LONG.map((d,k)=>{ const h=hd[k]||{}; return `<tr><td>${d}</td>${['entrada','saida','intIni','intFim'].map(c=>`<td><input type="time" data-hd="${k}" data-campo="${c}" value="${esc(h[c]||'')}" aria-label="${d}: ${c}"></td>`).join('')}</tr>`; }).join('')}
+    </tbody></table></div>
+    <p class="small muted" data-sum="hd">${resumoHorariosDia(p)}</p></details>`;
+}
+function resumoHorariosDia(p){
+  const hd=p.horariosDia||{};
+  const l=Object.keys(hd).filter(k=>hd[k]&&hd[k].entrada&&hd[k].saida).map(k=>{ const j=M.jornada(hd[k]); return `${DOW_LONG[k]}: ${hd[k].entrada}–${hd[k].saida}${j?` (${fmtH(j.eff)})`:''}`; });
+  return l.length ? 'Dias com horário próprio: '+l.join(' · ')+'.' : 'Todos os dias usam o horário padrão.';
+}
 function resumoJornada(p){
   const j=M.jornada(p); if(!j) return 'Informe entrada e saída.';
   return `Jornada de ${fmtH(j.eff)} por dia${j.itv?` (intervalo de ${j.itv} min)`:', sem intervalo informado'}${j.cruza?' · termina no dia seguinte':''}${j.not?` · ${fmtH(j.not)} noturnas (${fmtH(j.notReduzida)} em hora reduzida)`:''}.`;
@@ -395,7 +409,7 @@ function blocoExtras(p){
   const outras=[...new Set(state.equipe.map(x=>x.grupo.trim()).filter(Boolean))].filter(g=>g!==p.grupo.trim());
   const marc=new Set(p.funcoesExtras||[]);
   return `<div class="f"><span style="font-weight:600;font-size:.9rem">Também pode trabalhar como</span>
-    <span class="hint small muted">Marque se a pessoa pode cobrir outra área quando faltar gente ou quando a área dela estiver completa.</span>
+    <span class="hint small muted">Marque se a pessoa pode cobrir outra área quando faltar gente ou quando a área dela estiver completa. Só vale para áreas no mesmo horário (ex.: caixa e garçom do turno da noite), não para outro turno.</span>
     ${outras.length ? `<div class="row" style="gap:14px;margin-top:4px">${outras.map(g=>`<label class="row small" style="gap:6px"><input type="checkbox" data-extra="${esc(g)}" ${marc.has(g)?'checked':''}> ${esc(g)}</label>`).join('')}</div>`
       : '<span class="small muted">Preencha a área principal das outras pessoas para ver as opções aqui.</span>'}</div>`;
 }
@@ -415,6 +429,7 @@ function cardPessoa(p,i){
         <label class="f">Intervalo: fim<input type="time" data-f="intFim" value="${p.intFim}" id="p${p.id}-if"></label>
       </div>
       <p class="small muted" data-sum="jor">${resumoJornada(p)}</p>
+      ${blocoHorariosDia(p)}
       <div class="grid g2">
         <label class="f">Área ou função principal <span class="hint">Use o mesmo nome para quem faz o mesmo trabalho (ex.: Garçom).</span>
           <input type="text" list="dl-grupos" data-f="grupo" value="${esc(p.grupo)}" id="p${p.id}-grupo" placeholder="Ex.: Garçom"></label>
@@ -532,11 +547,11 @@ function resultado(){
   const nI=a.nIrregular, nA=a.alertas.filter(x=>x.nivel==='atencao'||x.nivel==='nverif').length;
   const head=dias.map(x=>`<th class="${x.dw===0?'wk':''} ${x.dw===6?'sun':''}">${String(x.d.getUTCDate()).padStart(2,'0')}<span class="wd">${DOW[x.dw]}</span></th>`).join('');
   const rows=state.equipe.map((p,e)=>{
-    const hor=M.jornada(p)?`${p.entrada}–${p.saida}`:'';
+    const horDia = dw => { const h=M.horarioDia(p, dw); return M.jornada(h) ? `${h.entrada}–${h.saida}` : ''; };
     return `<tr><td class="name"><b>${esc(p.nome)}</b><span>${esc([p.cargo,p.grupo].filter(Boolean).join(' · '))}</span></td>${dias.map(x=>{
       const c=a.lab[e][x.i], lock=!x.aberto || ctx.fixed[e][x.i]!==null, ed=R.edit[e].has(x.i);
       const fx = a.funcao && a.funcao[e][x.i] && a.funcao[e][x.i]!==p.grupo.trim() ? a.funcao[e][x.i] : '';
-      return `<td class="cell c-${c} ${x.dw===0?'wk':''} ${lock?'locked':''} ${ed?'edited':''}" data-e="${e}" data-i="${x.i}" ${lock?'':'tabindex="0" role="button"'} title="${esc(p.nome)} · ${br(x.d)} · ${NOME_COD[c]}${fx?' como '+esc(fx):''}${x.fer?' · '+esc(x.fer.nome):''}${lock?'':' · clique para alternar'}">${c}${(c==='T'||c==='FE')&&hor?`<small>${hor}</small>`:''}${fx?`<small class="outra">como ${esc(fx)}</small>`:''}</td>`;}).join('')}</tr>`;
+      return `<td class="cell c-${c} ${x.dw===0?'wk':''} ${lock?'locked':''} ${ed?'edited':''}" data-e="${e}" data-i="${x.i}" ${lock?'':'tabindex="0" role="button"'} title="${esc(p.nome)} · ${br(x.d)} · ${NOME_COD[c]}${fx?' como '+esc(fx):''}${x.fer?' · '+esc(x.fer.nome):''}${lock?'':' · clique para alternar'}">${c}${(c==='T'||c==='FE')&&horDia(x.dw)?`<small>${horDia(x.dw)}</small>`:''}${fx?`<small class="outra">como ${esc(fx)}</small>`:''}</td>`;}).join('')}</tr>`;
   }).join('');
   const pres=dias.map(x=>{ const n=x.aberto?a.cnt[x.i]:0; return `<td class="${x.dw===0?'wk':''} ${x.aberto && n<x.min?'short':''}">${n}</td>`; }).join('');
   const mins=dias.map(x=>`<td class="${x.dw===0?'wk':''}">${x.min}</td>`).join('');
@@ -674,8 +689,8 @@ app.addEventListener('click', ev=>{
     else if(act==='montar') montar();
     else if(act==='limpar'){ state.equipe=[]; state.exemplo=false; state.grupoMin={}; render(); }
     else if(act==='remover'){ state.equipe.splice(i,1); render(); }
-    else if(act==='duplicar'){ const c={...state.equipe[i], nome:state.equipe[i].nome+' (cópia)', id:uid++}; state.equipe.splice(i+1,0,c); render(); }
-    else if(act==='copiar'){ const s=state.equipe[i]; state.equipe.forEach(p=>{p.entrada=s.entrada;p.saida=s.saida;p.intIni=s.intIni;p.intFim=s.intFim;}); render(); toast('Horário copiado para toda a equipe.'); }
+    else if(act==='duplicar'){ const c={...JSON.parse(JSON.stringify(state.equipe[i])), nome:state.equipe[i].nome+' (cópia)', id:uid++}; state.equipe.splice(i+1,0,c); render(); }
+    else if(act==='copiar'){ const s=state.equipe[i]; state.equipe.forEach(p=>{p.entrada=s.entrada;p.saida=s.saida;p.intIni=s.intIni;p.intFim=s.intFim;p.horariosDia=JSON.parse(JSON.stringify(s.horariosDia||{}));}); render(); toast('Horário (inclusive os dias com horário próprio) copiado para toda a equipe.'); }
     else if(act==='padrao'){ const v=id=>document.getElementById(id).value; state.equipe.forEach(p=>{p.entrada=v('h-ent');p.saida=v('h-sai');p.intIni=v('h-ii');p.intFim=v('h-if');}); render(); toast('Horário aplicado a todos.'); }
     else if(act==='remfer'){ state.feriados.splice(Number(b.dataset.k),1); render(); }
     else if(act==='outra'){ state.seed++; gerar(); render(); toast(state.resultado.ok?'Nova versão gerada.':'Não há escala válida com estes dados.'); }
@@ -716,6 +731,15 @@ app.addEventListener('input', ev=>{
     card.querySelector('[data-sum="nome"]').textContent=p.nome||'Sem nome';
     card.querySelector('[data-sum="res"]').textContent=resumoPessoa(p);
     card.querySelector('[data-sum="jor"]').textContent=resumoJornada(p);
+    const shd=card.querySelector('[data-sum="hd"]'); if(shd) shd.textContent=resumoHorariosDia(p);
+    state.exemplo=false; agendarSalvar(); return;
+  }
+  if(t.dataset.hd!==undefined){
+    const card=t.closest('.person'), p=state.equipe[Number(card.dataset.i)], k=t.dataset.hd;
+    p.horariosDia=p.horariosDia||{}; const h=p.horariosDia[k]=p.horariosDia[k]||{entrada:'',saida:'',intIni:'',intFim:''};
+    h[t.dataset.campo]=t.value;
+    if(!h.entrada && !h.saida && !h.intIni && !h.intFim) delete p.horariosDia[k];
+    card.querySelector('[data-sum="hd"]').textContent=resumoHorariosDia(p);
     state.exemplo=false; agendarSalvar(); return;
   }
   if(t.dataset.min!==undefined){ state.dias[Number(t.dataset.min)].min=Math.max(0,Number(t.value)||0); agendarSalvar(); return; }
@@ -811,7 +835,7 @@ function semanasDoMes(ctx){
 const COR = {T:[220,240,227], RSR:[232,236,238], FG:[227,235,245], FER:[251,231,190], FE:[231,218,246], FC:[212,238,240]};
 const TXT = {T:[20,92,53], RSR:[85,100,107], FG:[59,88,120], FER:[122,75,0], FE:[90,47,140], FC:[21,94,102]};
 const LEGENDA = 'T trabalho · RSR repouso semanal · FER feriado sem trabalho · FG folga da escala · FE trabalho em feriado · FC folga compensatória';
-const celula = (p,c,f) => (c==='T'||c==='FE') ? `${c}\n${p.entrada}–${p.saida}${f && f!==p.grupo.trim() ? '\ncomo '+f : ''}` : c;
+const celula = (p,c,f,dw) => { if(c!=='T' && c!=='FE') return c; const h=M.horarioDia(p, dw); return `${c}\n${h.entrada}–${h.saida}${f && f!==p.grupo.trim() ? '\ncomo '+f : ''}`; };
 const ordemNivel={irregular:0, atencao:1, nverif:2, info:3}, nomeNivel={irregular:'Irregular', atencao:'Atenção', nverif:'Não verificado', info:'Informação'};
 
 /* as fontes padrão do PDF não têm travessão nem aspas curvas */
@@ -836,7 +860,7 @@ async function baixarPDF(){
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(86,107,101);
     doc.text(`${br(sem[0].d)} a ${br(sem[sem.length-1].d)} · ${LEGENDA}`, 14, 21);
     const head=[['Pessoa', ...sem.map(x=>`${ddmm(x.d)}\n${DOW_LONG[x.dw]}`)]];
-    const body=state.equipe.map((p,e)=>[`${p.nome}\n${[p.cargo,p.grupo].filter(Boolean).join(' · ')}`, ...sem.map(x=>celula(p, a.lab[e][x.i], a.funcao && a.funcao[e][x.i]))]);
+    const body=state.equipe.map((p,e)=>[`${p.nome}\n${[p.cargo,p.grupo].filter(Boolean).join(' · ')}`, ...sem.map(x=>celula(p, a.lab[e][x.i], a.funcao && a.funcao[e][x.i], x.dw))]);
     body.push(['Presentes', ...sem.map(x=>String(x.aberto?a.cnt[x.i]:0))]);
     body.push(['Mínimo', ...sem.map(x=>String(x.min))]);
     doc.autoTable({head, body, startY:26, theme:'grid', styles:{fontSize:8, cellPadding:2, valign:'middle', lineColor:[211,222,218], lineWidth:0.2},
@@ -899,7 +923,7 @@ async function baixarExcel(){
   ws.addRow(['Pessoa','Cargo','Grupo', ...dias.map(x=>`${ddmm(x.d)}\n${DOW[x.dw]}`)]);
   ws.getRow(2).height=30; ws.getRow(2).eachCell(cab);
   state.equipe.forEach((p,e)=>{
-    const row=ws.addRow([p.nome, p.cargo, p.grupo, ...dias.map(x=>celula(p, a.lab[e][x.i], a.funcao && a.funcao[e][x.i]))]);
+    const row=ws.addRow([p.nome, p.cargo, p.grupo, ...dias.map(x=>celula(p, a.lab[e][x.i], a.funcao && a.funcao[e][x.i], x.dw))]);
     row.height=30;
     dias.forEach((x,k)=>{ const c=a.lab[e][x.i], cell=row.getCell(4+k);
       cell.fill={type:'pattern', pattern:'solid', fgColor:{argb:argb(COR[c])}}; cell.font={color:{argb:argb(TXT[c])}, bold:true};
