@@ -8,7 +8,7 @@ Ferramenta on-line para montar a escala de trabalho 5×2 de uma empresa:
 - exporta em PDF e Excel;
 - guarda as escalas no próprio navegador, para abrir e editar depois.
 
-Acesse: https://guila-contabil.github.io/gerador-de-escalas/
+Acesse: https://geradordeescalas.constantinogilnei.com.br
 
 Nenhum dado é enviado à internet: as escalas ficam salvas apenas no navegador e no aparelho de quem as criou.
 
