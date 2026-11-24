@@ -108,8 +108,15 @@
     if (en == null || sa == null) return null;
     let dur = (sa - en + 1440) % 1440; if (dur === 0) dur = 1440;
     const ii = toMin(p.intIni), fi = toMin(p.intFim);
-    let itv = 0;
-    if (ii != null && fi != null) itv = (fi - ii + 1440) % 1440;
+    let itv = 0, intervaloInvalido = null;
+    // A-01/A-02: o intervalo precisa estar inteiro dentro do turno, com início antes do fim
+    if ((ii == null) !== (fi == null)) intervaloInvalido = "incompleto";
+    else if (ii != null) {
+      const a = (ii - en + 1440) % 1440, b = (fi - en + 1440) % 1440;   // posição em minutos a partir da entrada
+      if (a === 0 || a >= dur || b === 0 || b > dur) intervaloInvalido = "fora do horário de trabalho";
+      else if (b <= a) intervaloInvalido = "com início depois do fim";
+      else itv = b - a;
+    }
     const noturno = (ini, len) => { let n = 0; for (let k = 0; k < len; k++) { const mm = (ini + k) % 1440; if (mm >= 1320 || mm < 300) n++; } return n; };
     const not = Math.max(0, noturno(en, dur) - (itv ? noturno(ii, itv) : 0));
     const eff = dur - itv;
@@ -119,6 +126,7 @@
       computadas: eff - not + not * 60 / 52.5,
       cruza: en + dur > 1440,
       informouIntervalo: itv > 0,
+      intervaloInvalido,                      // texto do problema, ou null; com intervalo inválido as horas contam sem desconto
     };
   }
 
@@ -342,17 +350,46 @@
       const chave = e => (streak[e] + 1) / N[e] + rnd() * 0.35;
       const ordem = livres.map(e => ({ e, c: chave(e) })).sort((a, b) => b.c - a.c).map(o => o.e);
       let opcoes = 0, vistas = 0;
+      const vistosK = new Set();
+      function* tentar(extra) {
+        const chaveOp = extra.slice().sort((a, b) => a - b).join(",");
+        if (vistosK.has(chaveOp)) return;
+        vistosK.add(chaveOp);
+        const folga = new Set([...obrig, ...extra]);
+        if (!gruposOk(folga)) return;
+        opcoes++;
+        for (let e = 0; e < E; e++) { plano[e][k] = folga.has(e); streak[e] = folga.has(e) ? 0 : streak[e] + 1; }
+        yield* dfs(k + 1);
+        streak.splice(0, E, ...salvo);
+      }
+      // A-03: opções montadas por área — cada área só cede folgas até o seu mínimo
+      const cota0 = {};
+      for (const g of Object.keys(gmin)) cota0[g] = grupoDe.filter((gg, e) => gg === g && !setObrig.has(e)).length - gmin[g];
+      const porArea = (lista, tam) => {
+        const cota = { ...cota0 }, esc = [];
+        for (const e of lista) {
+          if (esc.length >= tam) break;
+          const g = grupoDe[e];
+          if (cota[g] !== undefined) { if (cota[g] <= 0) continue; cota[g]--; }
+          esc.push(e);
+        }
+        return esc;
+      };
+      if (Object.keys(gmin).length) {
+        for (let tam = cap; tam >= Math.max(0, cap - 3) && opcoes < 12; tam--) yield* tentar(porArea(ordem, tam));
+        for (let v = 0; v < 4 && opcoes < 12; v++) {
+          const outra = livres.map(e => ({ e, c: chave(e) + rnd() * 0.8 })).sort((a, b) => b.c - a.c).map(o => o.e);
+          yield* tentar(porArea(outra, cap));
+        }
+      }
+      // combinações gerais, como antes
       for (let tam = cap; tam >= 0 && opcoes < 12; tam--) {
         for (const extra of combos(ordem, tam)) {
           if (opcoes >= 12 || ++vistas > 400) break;
-          const folga = new Set([...obrig, ...extra]);
-          if (!gruposOk(folga)) continue;
-          opcoes++;
-          for (let e = 0; e < E; e++) { plano[e][k] = folga.has(e); streak[e] = folga.has(e) ? 0 : streak[e] + 1; }
-          yield* dfs(k + 1);
-          streak.splice(0, E, ...salvo);
+          yield* tentar(extra);
         }
       }
+      if (!opcoes) falhas.push({ tipo: "domingo-areas", i, k, cap, obrig: obrig.slice() });
     }
     yield* dfs(0);
   }
@@ -618,6 +655,18 @@
     }
     const pos = x => x.tipo === "semana" ? x.w.i0 + 6 : x.i;
     const f = outras.reduce((a, b) => pos(b) > pos(a) ? b : a);
+    if (f.tipo === "domingo-areas") {
+      const x = days[f.i];
+      const areas = Object.entries(ctx.gmin).map(([g, v]) => `${g}: ${ctx.grupoDe.filter(gg => gg === g).length} pessoas, mínimo ${v}`);
+      return {
+        titulo: `Domingo ${ddmm(x.d)}: não há como escolher as folgas respeitando o mínimo de cada área`,
+        detalhes: [
+          `Neste domingo cabem até ${f.cap} folgas além das obrigatórias, mas nenhuma combinação deixa todas as áreas com o mínimo de pessoas e cumpre o revezamento dos domingos.`,
+          ...areas,
+        ],
+        sugestoes: ["Reduza o mínimo de alguma área ou o mínimo do domingo.", "Inclua mais pessoas nas áreas com mínimo alto.", "Marque “Também pode trabalhar como” para quem pode cobrir outra área no mesmo horário."],
+      };
+    }
     if (f.tipo === "dia") {
       const x = days[f.i];
       return {
@@ -782,6 +831,12 @@
       const horarios = [{ rot: "", h: p }, ...Object.entries(p.horariosDia || {}).filter(([, h]) => h && h.entrada && h.saida).map(([dw, h]) => ({ rot: ` (${DOW_EXT[dw]})`, h }))];
       for (const { rot, h } of horarios) {
         const jj = jornada(h); if (!jj) continue;
+        if (jj.intervaloInvalido) {
+          add("irregular", `${nome(e)}${rot}: intervalo ${jj.intervaloInvalido}`,
+            `O intervalo (${h.intIni || "?"} às ${h.intFim || "?"}) precisa começar e terminar dentro do horário de trabalho (${h.entrada} às ${h.saida}). Corrija o cadastro; enquanto isso, as horas são contadas sem descontar o intervalo.`,
+            "CLT, art. 71");
+          continue;
+        }
         // D13: até 6 h o intervalo de 15 min é considerado concedido, mesmo sem estar preenchido;
         // acima de 6 h o intervalo de no mínimo 1 h é obrigatório
         if (jj.eff > 360 && !jj.informouIntervalo) add("irregular", `${nome(e)}${rot}: jornada de ${fmtH(jj.dur)} sem intervalo`,

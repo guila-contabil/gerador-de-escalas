@@ -400,6 +400,7 @@ function resumoHorariosDia(p){
 }
 function resumoJornada(p){
   const j=M.jornada(p); if(!j) return 'Informe entrada e saída.';
+  if(j.intervaloInvalido) return `⚠ Intervalo ${j.intervaloInvalido}: ele precisa começar e terminar entre a entrada (${p.entrada}) e a saída (${p.saida}).`;
   return `Jornada de ${fmtH(j.eff)} por dia${j.itv?` (intervalo de ${j.itv} min)`:', sem intervalo informado'}${j.cruza?' · termina no dia seguinte':''}${j.not?` · ${fmtH(j.not)} noturnas (${fmtH(j.notReduzida)} em hora reduzida)`:''}.`;
 }
 function resumoPessoa(p){
